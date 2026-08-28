@@ -540,6 +540,8 @@ public sealed class TestModule : IDCMLModule
                     new DataCenterComponentCatalogQuery(
                         sceneName:
                             sceneName,
+                        typeNamePrefix:
+                            "Il2Cpp.",
                         includeInactive:
                             true,
                         maxObjects:
@@ -590,7 +592,7 @@ public sealed class TestModule : IDCMLModule
                 "ComponentInventory");
 
             _logger?.Info(
-                $"Component inventory scanned {snapshot.ScannedObjectCount} object(s), " +
+                $"Focused IL2CPP component inventory scanned {snapshot.ScannedObjectCount} object(s), " +
                 $"{snapshot.UniqueComponentTypeCount} unique component type(s), and " +
                 $"{snapshot.Il2CppTypeCount} Il2Cpp type(s) for scene '{sceneName}'.");
         }
@@ -620,7 +622,7 @@ public sealed class TestModule : IDCMLModule
                 "ComponentInventoryError");
 
             _logger?.Error(
-                $"Component inventory failed for scene '{sceneName}'.");
+                $"Focused IL2CPP component inventory failed for scene '{sceneName}'.");
 
             _logger?.Error(
                 exception.ToString());
@@ -649,7 +651,7 @@ public sealed class TestModule : IDCMLModule
         string inventoryPath =
             Path.Combine(
                 _context.DataDirectory,
-                "DCML.ComponentInventory." +
+                "DCML.ComponentInventory.Il2Cpp." +
                 safeSceneName +
                 ".log");
 

@@ -40,7 +40,9 @@ public sealed class DataCenterComponentCatalog :
                     includeInactive:
                         query.IncludeInactive,
                     maxResults:
-                        query.MaxObjects));
+                        query.MaxObjects,
+                    componentTypeNamePrefix:
+                        query.TypeNamePrefix));
 
         var accumulators =
             new Dictionary<string, ComponentAccumulator>(

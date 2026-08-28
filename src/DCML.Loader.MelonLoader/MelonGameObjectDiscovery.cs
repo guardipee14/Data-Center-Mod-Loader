@@ -96,6 +96,16 @@ internal sealed class MelonGameObjectDiscovery :
                 continue;
             }
 
+            if (
+                query.ComponentTypeNamePrefix.Length > 0 &&
+                !HasComponentTypePrefix(
+                    info.ComponentTypeNames,
+                    query.ComponentTypeNamePrefix)
+            )
+            {
+                continue;
+            }
+
             matches.Add(
                 info);
         }
@@ -150,6 +160,28 @@ internal sealed class MelonGameObjectDiscovery :
                 string.Equals(
                     simpleName,
                     requestedTypeName,
+                    StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasComponentTypePrefix(
+        IReadOnlyList<string> componentTypeNames,
+        string requestedPrefix)
+    {
+        foreach (
+            string componentTypeName in
+            componentTypeNames
+        )
+        {
+            if (
+                componentTypeName.StartsWith(
+                    requestedPrefix,
                     StringComparison.OrdinalIgnoreCase)
             )
             {
@@ -818,6 +850,8 @@ internal sealed class MelonGameObjectDiscovery :
                 }
             }
         }
+
+
         private static IEnumerable<object> Enumerate(
             object value)
         {

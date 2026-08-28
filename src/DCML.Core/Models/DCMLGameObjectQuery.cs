@@ -15,7 +15,8 @@ public sealed class DCMLGameObjectQuery
         string? sceneName = null,
         string? componentTypeName = null,
         bool includeInactive = true,
-        int maxResults = DefaultMaxResults)
+        int maxResults = DefaultMaxResults,
+        string? componentTypeNamePrefix = null)
     {
         if (
             maxResults <= 0 ||
@@ -40,6 +41,10 @@ public sealed class DCMLGameObjectQuery
             Normalize(
                 componentTypeName);
 
+        ComponentTypeNamePrefix =
+            Normalize(
+                componentTypeNamePrefix);
+
         IncludeInactive =
             includeInactive;
 
@@ -52,6 +57,8 @@ public sealed class DCMLGameObjectQuery
     public string SceneName { get; }
 
     public string ComponentTypeName { get; }
+
+    public string ComponentTypeNamePrefix { get; }
 
     public bool IncludeInactive { get; }
 
