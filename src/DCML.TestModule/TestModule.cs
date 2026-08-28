@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using DCML.Core.Abstractions;
 using DCML.Core.Models;
+using DCML.DataCenter;
+using DCML.DataCenter.Models;
 
 namespace DCML.TestModule;
 
@@ -21,6 +23,8 @@ public sealed class TestModule : IDCMLModule
     private IDCMLGameLifecycle? _gameLifecycle;
 
     private IDCMLGameObjectDiscovery? _gameObjectDiscovery;
+
+    private DataCenterApi? _dataCenterApi;
 
     private IDisposable? _probeSubscription;
 
@@ -45,6 +49,22 @@ public sealed class TestModule : IDCMLModule
         string.Empty;
 
     private string _lastObjectDiscoverySample =
+        string.Empty;
+
+    private int _recommendedApiRuns;
+
+    private int _lastRecommendedEntityCount;
+
+    private string _lastRecommendedScene =
+        string.Empty;
+
+    private string _lastRecommendedKinds =
+        string.Empty;
+
+    private string _lastRecommendedError =
+        string.Empty;
+
+    private string _lastRecommendedSample =
         string.Empty;
 
     public string Id =>
@@ -130,6 +150,10 @@ public sealed class TestModule : IDCMLModule
                 "DCML did not provide IDCMLGameObjectDiscovery through the module service provider.");
         }
 
+        _dataCenterApi =
+            DataCenterApi.Create(
+                context);
+
         if (!string.Equals(
                 _runtimeInfo.ModuleId,
                 Id,
@@ -201,6 +225,9 @@ public sealed class TestModule : IDCMLModule
 
         _logger.Info(
             "Game object discovery service registered.");
+
+        _logger.Info(
+            "Optional DCML.DataCenter recommended API enabled by this module.");
     }
 
     public void Start()
@@ -296,6 +323,9 @@ public sealed class TestModule : IDCMLModule
         {
             RunObjectDiscovery(
                 eventData.SceneName);
+
+            RunRecommendedDataCenterApi(
+                eventData.SceneName);
         }
     }
 
@@ -369,6 +399,104 @@ public sealed class TestModule : IDCMLModule
         }
     }
 
+
+    private void RunRecommendedDataCenterApi(
+        string sceneName)
+    {
+        if (_dataCenterApi is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var entities =
+                _dataCenterApi.Entities.Find(
+                    new DataCenterEntityQuery(
+                        kind:
+                            DataCenterEntityKinds.UserInterface,
+                        sceneName:
+                            sceneName,
+                        includeInactive:
+                            true,
+                        includeUnknown:
+                            false,
+                        maxResults:
+                            32));
+
+            _recommendedApiRuns++;
+            _lastRecommendedEntityCount =
+                entities.Count;
+            _lastRecommendedScene =
+                sceneName;
+            _lastRecommendedError =
+                string.Empty;
+
+            _lastRecommendedKinds =
+                string.Join(
+                    ", ",
+                    entities
+                        .GroupBy(
+                            value =>
+                                value.Kind,
+                            StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(
+                            group =>
+                                group.Key,
+                            StringComparer.OrdinalIgnoreCase)
+                        .Select(
+                            group =>
+                                group.Key +
+                                "=" +
+                                group.Count()));
+
+            _lastRecommendedSample =
+                string.Join(
+                    " || ",
+                    entities
+                        .Take(8)
+                        .Select(
+                            value =>
+                                value.Kind +
+                                ":" +
+                                value.HierarchyPath +
+                                " [" +
+                                value.ClassificationRuleId +
+                                "]"));
+
+            AppendProof(
+                "RecommendedDataCenterApi");
+
+            _logger?.Info(
+                $"Optional DCML.DataCenter API returned {entities.Count} recommended semantic entity/entities for scene '{sceneName}'.");
+        }
+        catch (Exception exception)
+        {
+            _recommendedApiRuns++;
+            _lastRecommendedEntityCount =
+                0;
+            _lastRecommendedScene =
+                sceneName;
+            _lastRecommendedKinds =
+                string.Empty;
+            _lastRecommendedError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+            _lastRecommendedSample =
+                string.Empty;
+
+            AppendProof(
+                "RecommendedDataCenterApiError");
+
+            _logger?.Error(
+                $"Optional DCML.DataCenter API failed for scene '{sceneName}'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
     private void EnsureInitialized()
     {
         if (_context is null)
@@ -411,6 +539,12 @@ public sealed class TestModule : IDCMLModule
         {
             throw new InvalidOperationException(
                 "The game object discovery service is unavailable.");
+        }
+
+        if (_dataCenterApi is null)
+        {
+            throw new InvalidOperationException(
+                "The optional DCML.DataCenter API was not initialized.");
         }
 
         if (_settings is null)
@@ -499,6 +633,16 @@ public sealed class TestModule : IDCMLModule
                 $"LastObjectDiscoveryError: {_lastObjectDiscoveryError}",
                 $"LastObjectDiscoverySample: {_lastObjectDiscoverySample}");
 
+        var recommendedApiLines =
+            string.Join(
+                Environment.NewLine,
+                $"RecommendedApiRuns: {_recommendedApiRuns}",
+                $"LastRecommendedEntityCount: {_lastRecommendedEntityCount}",
+                $"LastRecommendedScene: {_lastRecommendedScene}",
+                $"LastRecommendedKinds: {_lastRecommendedKinds}",
+                $"LastRecommendedError: {_lastRecommendedError}",
+                $"LastRecommendedSample: {_lastRecommendedSample}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -511,6 +655,7 @@ public sealed class TestModule : IDCMLModule
                 eventLines,
                 gameLines,
                 discoveryLines,
+                recommendedApiLines,
                 string.Empty,
                 string.Empty);
 

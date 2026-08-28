@@ -1,17 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworks>netstandard2.1;net6.0</TargetFrameworks>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>DCML.TestModule</AssemblyName>
-    <RootNamespace>DCML.TestModule</RootNamespace>
+    <AssemblyName>DCML.DataCenter</AssemblyName>
+    <RootNamespace>DCML.DataCenter</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DCML.Core\DCML.Core.csproj" />
-    <ProjectReference Include="..\DCML.DataCenter\DCML.DataCenter.csproj" />
   </ItemGroup>
 
 </Project>
