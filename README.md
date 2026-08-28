@@ -1,10 +1,29 @@
 # Data Center Mod Loader (DCML)
 
-DCML is an experimental, host-neutral module runtime for **Data Center** by Waseku.
+DCML is an experimental, host-neutral mod runtime for **Data Center** by Waseku.
 
-The current prototype runs through a MelonLoader host adapter, but DCML modules target the DCML Core API instead of directly inheriting from MelonLoader. The goal is to keep module code portable across future host implementations.
+The current implementation runs through a MelonLoader host adapter, while DCML's runtime contracts remain separate from MelonLoader. The goal is to let the loader handle discovery, validation, dependency ordering, activation, lifecycle, and host bridging without forcing every mod author into a special high-level development framework.
 
-> **Project status:** early development / v0.0.1 runtime foundation.
+> **Project status:** early development / **v0.0.2 Data Center Discovery Foundation**.
+
+[Latest prerelease: DCML v0.0.2](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.2)
+
+## Modding model
+
+DCML's primary job is to **load compatible mods and bridge them into Data Center in a form the current game/runtime host can understand**.
+
+A mod does **not** have to use the optional Data Center helper APIs just to be loadable by DCML.
+
+Developers may choose to:
+
+- use the minimal DCML runtime contracts;
+- use the optional `DCML.DataCenter` convenience API;
+- use lower-level compatible Unity, IL2CPP, game, or host APIs directly;
+- mix those approaches when appropriate.
+
+The recommended helpers exist to reduce boilerplate and isolate mods from unstable game internals, not to become a loader requirement.
+
+See [docs/MODDING-MODEL.md](docs/MODDING-MODEL.md) for the current compatibility model.
 
 ## What works today
 
@@ -15,7 +34,7 @@ The current runtime has been tested inside the live Data Center game process and
 - validate semantic versions;
 - resolve required and optional dependencies;
 - enforce minimum dependency versions;
-- detect dependency cycles;
+- detect duplicate IDs and dependency cycles;
 - produce deterministic dependency-safe load order;
 - dynamically load module assemblies;
 - activate `IDCMLModule` implementations;
@@ -23,22 +42,55 @@ The current runtime has been tested inside the live Data Center game process and
 - isolate module failures;
 - stop modules in reverse startup order;
 - persist per-module data;
-- expose host-neutral services through `IDCMLModuleContext.Services`.
+- expose host-neutral services through `IDCMLModuleContext.Services`;
+- receive Data Center scene lifecycle events;
+- discover live Unity GameObjects;
+- preserve native IL2CPP component identities;
+- filter object discovery by exact component type or component prefix;
+- page deterministically across large scenes;
+- catalog loaded IL2CPP wrapper types and their inheritance information;
+- provide optional Data Center-specific semantic discovery helpers.
 
-The current automated test baseline is **80 passing tests**.
+The current automated test baseline is **168 passing tests**.
 
-## Live-proven services
+## Runtime capabilities
 
-DCML currently exposes four host-neutral services:
+The MelonLoader host currently advertises:
 
 | Capability | Service | Purpose |
 | --- | --- | --- |
-| `dcml.logging` | `IDCMLLogger` | Module-scoped logging without a MelonLoader dependency |
+| `dcml.logging` | `IDCMLLogger` | Module-scoped logging without requiring a MelonLoader dependency in module code |
 | `dcml.runtime-information` | `IDCMLRuntimeInfo` | DCML, host, game, module, and capability information |
 | `dcml.configuration` | `IDCMLConfiguration` | Typed persistent JSON configuration |
 | `dcml.events` | `IDCMLEventBus` | Shared typed publish/subscribe event bus |
+| `dcml.game.scene-lifecycle` | `IDCMLGameLifecycle` | Read-only scene loaded / initialized / unloaded lifecycle state and events |
+| `dcml.game.object-discovery` | `IDCMLGameObjectDiscovery` | Read-only live GameObject and component discovery |
+| `dcml.game.type-catalog` | `IDCMLGameTypeCatalog` | Read-only catalog of loaded runtime/IL2CPP wrapper types and inheritance metadata |
 
-The end-to-end probe has verified logging, configuration persistence across separate game launches, typed event delivery, and clean shutdown inside Data Center.
+The end-to-end probe has verified runtime initialization, configuration persistence across game launches, event delivery, scene lifecycle delivery, object discovery, complete paged IL2CPP component inventory, game type catalog access, and clean shutdown inside Data Center.
+
+## Live validation
+
+The v0.0.2 discovery milestone was validated inside Data Center with:
+
+- **22,860** relevant `BaseScene` objects scanned across **2 pages**;
+- **94** unique focused IL2CPP component types;
+- a complete focused component inventory;
+- **1,036** loaded `Il2Cpp.*` runtime types;
+- no type-catalog result-limit hit at the 16,384-result bound;
+- live semantic classification of `Il2Cpp.CableLink` as `cable`;
+- no DCML runtime error in the verified run.
+
+The loaded type catalog also confirmed gameplay types including:
+
+- `Il2Cpp.Server`;
+- `Il2Cpp.Rack`;
+- `Il2Cpp.NetworkSwitch`;
+- `Il2Cpp.Router : Il2Cpp.NetworkSwitch`;
+- `Il2Cpp.Firewall : Il2Cpp.NetworkSwitch`;
+- `Il2Cpp.CableLink`.
+
+The tested BaseScene state did not contain matching instantiated `Server`, `Rack`, or network-device components, so DCML does not fabricate live entities for them.
 
 ## Architecture
 
@@ -51,31 +103,24 @@ DCML.Loader.MelonLoader
     |
 DCML.Core
     |
-Package discovery
++-- Package discovery
++-- Manifest validation
++-- Dependency resolution
++-- Deterministic load order
++-- Module activation
++-- Initialize -> Start -> Stop
++-- Host-neutral service contracts
+
+Optional development layer
     |
-Manifest validation
+DCML.DataCenter
     |
-Dependency resolution
-    |
-Module activation
-    |
-IDCMLModule
-    |
-Initialize -> Start -> Stop
++-- Semantic entity discovery
++-- Component inventory
++-- Evidence-backed Data Center helpers
 ```
 
-Modules only depend on DCML Core:
-
-```text
-DCML module
-    |
-IDCMLModuleContext.Services
-    |
-+-- IDCMLLogger
-+-- IDCMLRuntimeInfo
-+-- IDCMLConfiguration
-+-- IDCMLEventBus
-```
+The loader/runtime remains separate from the optional Data Center-specific helper library.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for more detail.
 
@@ -146,11 +191,49 @@ public sealed class Module : IDCMLModule
 
 See [docs/MODULE-DEVELOPMENT.md](docs/MODULE-DEVELOPMENT.md) for the current module API.
 
+## Optional Data Center helper API
+
+`DCML.DataCenter` is an optional/recommended development layer above the low-level runtime services.
+
+Current semantic entity kinds include:
+
+- `user-interface`;
+- `rack`;
+- `server`;
+- `network-device`;
+- `cable`;
+- `machine`;
+- `unknown`.
+
+Evidence-backed default mappings currently include:
+
+| Runtime component | Semantic kind |
+| --- | --- |
+| `Il2Cpp.Server` | `server` |
+| `Il2Cpp.Rack` | `rack` |
+| `Il2Cpp.NetworkSwitch` | `network-device` |
+| `Il2Cpp.Router` | `network-device` |
+| `Il2Cpp.Firewall` | `network-device` |
+| `Il2Cpp.CableLink` | `cable` |
+
+Rules can also use inheritance-aware matching when `IDCMLGameTypeCatalog` is available.
+
+DCML intentionally does **not** classify `RackMount` as a rack or `SFPModule` as an entire network device. No default machine/factory/hacking/coding classifications are added without supporting runtime evidence.
+
+Relevant documentation:
+
+- [Game Type Catalog](docs/GAME-TYPE-CATALOG.md)
+- [Paged IL2CPP Inventory](docs/PAGED-IL2CPP-INVENTORY.md)
+- [Evidence-Backed Hardware Classification](docs/EVIDENCE-BACKED-HARDWARE-CLASSIFICATION.md)
+- [Inheritance-Aware Semantic Discovery](docs/INHERITANCE-AWARE-SEMANTIC-DISCOVERY.md)
+- [Targeted Semantic Live Proof](docs/TARGETED-SEMANTIC-LIVE-PROOF.md)
+
 ## Projects
 
 ```text
 src/
   DCML.Core/
+  DCML.DataCenter/
   DCML.Loader.MelonLoader/
   DCML.TestModule/
 
@@ -160,7 +243,16 @@ tests/
 
 ### DCML.Core
 
-Host-neutral contracts, package/runtime models, discovery, validation, dependency resolution, lifecycle coordination, services, and shared utilities.
+Host-neutral contracts, package/runtime models, discovery, validation, dependency resolution, lifecycle coordination, shared services, scene/object discovery contracts, and runtime type-catalog contracts.
+
+Targets:
+
+- `netstandard2.1`
+- `net6.0`
+
+### DCML.DataCenter
+
+Optional/recommended Data Center-specific helper library built on the low-level DCML Core discovery services.
 
 Targets:
 
@@ -171,15 +263,49 @@ Targets:
 
 Current Data Center host adapter.
 
-Targets:
+Target:
 
 - `net6.0`
 
-It is responsible for connecting MelonLoader to DCML Core and supplying host-backed services.
+It connects MelonLoader and IL2CPP runtime behavior to DCML Core without making MelonLoader part of the host-neutral module contract.
 
 ### DCML.TestModule
 
-End-to-end probe module used to prove the runtime in the actual game process.
+End-to-end probe module used to prove the runtime and read-only game-facing APIs inside the actual game process.
+
+## Installing the current prerelease
+
+Download `DCML-v0.0.2.zip` from the [v0.0.2 release](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.2).
+
+The archive contains:
+
+```text
+Mods/
+  DCML.Loader.MelonLoader.dll
+
+UserLibs/
+  DCML.Core.dll
+  DCML.DataCenter.dll
+
+UserData/
+  DCML/
+    Modules/
+      DCML.TestModule/
+        DCML.TestModule.dll
+        manifest.json
+```
+
+Extract the archive into the Data Center game directory with MelonLoader already installed.
+
+`DCML.TestModule` is a validation module and can be removed after verifying the runtime.
+
+Published v0.0.2 ZIP SHA-256:
+
+```text
+b511d2a5951c5d089152cd47ab56737d6029cdad2b8eb14ce4c414535bde0dc8
+```
+
+A matching `DCML-v0.0.2.sha256` file is attached to the GitHub release.
 
 ## Building
 
@@ -201,24 +327,41 @@ dotnet test .\DCML.sln `
     "-p:DataCenterRoot=C:\Program Files (x86)\Steam\steamapps\common\Data Center"
 ```
 
+Current baseline:
+
+```text
+168 passed
+0 failed
+```
+
 ## Current limitations
 
-- The working host adapter currently requires MelonLoader to already be present.
+- The working host adapter requires MelonLoader to already be present.
 - A Boosteroid/cloud-gaming first-stage bootstrap is **not solved** by this repository.
-- Data Center-specific gameplay APIs have not yet been exposed through host-neutral DCML abstractions.
-- The API is still early and may change before a stable v0.1 release.
+- Current game-facing APIs are primarily read-only discovery/introspection APIs; a general safe game-control/write API has not been exposed yet.
+- Semantic classifications are intentionally conservative and evidence-backed rather than guessed from object names.
+- Some gameplay concepts may exist as types, prefabs, resources, ECS/DOTS entities, data/config models, or other structures rather than instantiated GameObject components.
+- The API is still early and may change before a stable v0.1.0 release.
 
 ## Next direction
 
-The next major milestone is the first **Data Center-facing API abstraction**, built above the host-neutral runtime and services.
+The next discovery work is expected to look beyond instantiated scene GameObjects and inspect read-only loaded resources/prefabs so DCML can understand hardware definitions that are not currently placed in the active scene.
 
-Planned areas include:
+After the read-only model is strong enough, later milestones can introduce carefully scoped main-thread and safe interaction abstractions without making those higher-level helpers mandatory for loader compatibility.
 
-- game lifecycle/events;
-- object and entity discovery;
-- networking/infrastructure information;
-- safe interaction abstractions;
-- capability-based APIs so modules can adapt to available hosts.
+## Release validation
+
+**v0.0.2 — Data Center Discovery Foundation** was published from commit:
+
+```text
+4b6627dd5d99877532e375bf358bccc9770032e7
+```
+
+Publication validation:
+
+- **168/168** automated tests passed;
+- GitHub Actions run #10 completed successfully on the release commit;
+- release ZIP SHA-256 matches GitHub's uploaded asset digest.
 
 ## Disclaimer
 
