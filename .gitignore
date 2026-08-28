@@ -1,0 +1,32 @@
+# Build output
+**/bin/
+**/obj/
+TestResults/
+coverage/
+coverage.*
+*.trx
+
+# IDE / editor
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# DCML generated artifacts and local runtime data
+Artifacts/
+artifacts/
+UserData/
+Logs/
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local-only environment files
+.env
+.env.*
+!.env.example

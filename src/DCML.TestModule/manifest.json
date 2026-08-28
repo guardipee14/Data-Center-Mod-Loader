@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.test.lifecycle",
+  "name": "DCML Lifecycle Test Module",
+  "version": "0.0.1",
+  "description": "End-to-end lifecycle probe for the DCML MelonLoader host.",
+  "author": "DCML",
+  "entryAssembly": "DCML.TestModule.dll",
+  "entryType": "DCML.TestModule.TestModule",
+  "minimumDCMLVersion": "0.0.1",
+  "requiresRestart": false,
+  "dependencies": []
+}

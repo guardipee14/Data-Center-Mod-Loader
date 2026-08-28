@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>DCML.Loader.MelonLoader</AssemblyName>
+    <RootNamespace>DCML.Loader.MelonLoader</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <DataCenterRoot Condition="'$(DataCenterRoot)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Data Center</DataCenterRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DCML.Core\DCML.Core.csproj" />
+
+    <Reference Include="MelonLoader">
+      <HintPath>$(DataCenterRoot)\MelonLoader\net6\MelonLoader.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="0Harmony">
+      <HintPath>$(DataCenterRoot)\MelonLoader\net6\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
