@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using DCML.Core.Abstractions;
 using DCML.Core.Models;
 
@@ -19,6 +20,8 @@ public sealed class TestModule : IDCMLModule
 
     private IDCMLGameLifecycle? _gameLifecycle;
 
+    private IDCMLGameObjectDiscovery? _gameObjectDiscovery;
+
     private IDisposable? _probeSubscription;
 
     private IDisposable? _sceneSubscription;
@@ -30,6 +33,19 @@ public sealed class TestModule : IDCMLModule
     private int _sceneEventsReceived;
 
     private DCMLSceneLifecycleEvent? _lastSceneEvent;
+
+    private int _objectDiscoveryRuns;
+
+    private int _lastObjectDiscoveryCount;
+
+    private string _lastObjectDiscoveryScene =
+        string.Empty;
+
+    private string _lastObjectDiscoveryError =
+        string.Empty;
+
+    private string _lastObjectDiscoverySample =
+        string.Empty;
 
     public string Id =>
         "dcml.test.lifecycle";
@@ -73,6 +89,11 @@ public sealed class TestModule : IDCMLModule
                 typeof(IDCMLGameLifecycle))
             as IDCMLGameLifecycle;
 
+        _gameObjectDiscovery =
+            context.Services.GetService(
+                typeof(IDCMLGameObjectDiscovery))
+            as IDCMLGameObjectDiscovery;
+
         if (_logger is null)
         {
             throw new InvalidOperationException(
@@ -103,6 +124,12 @@ public sealed class TestModule : IDCMLModule
                 "DCML did not provide IDCMLGameLifecycle through the module service provider.");
         }
 
+        if (_gameObjectDiscovery is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameObjectDiscovery through the module service provider.");
+        }
+
         if (!string.Equals(
                 _runtimeInfo.ModuleId,
                 Id,
@@ -118,7 +145,8 @@ public sealed class TestModule : IDCMLModule
             DCMLRuntimeCapabilities.RuntimeInformation,
             DCMLRuntimeCapabilities.Configuration,
             DCMLRuntimeCapabilities.Events,
-            DCMLRuntimeCapabilities.GameSceneLifecycle
+            DCMLRuntimeCapabilities.GameSceneLifecycle,
+            DCMLRuntimeCapabilities.GameObjectDiscovery
         })
         {
             if (!_runtimeInfo.HasCapability(capability))
@@ -170,6 +198,9 @@ public sealed class TestModule : IDCMLModule
 
         _logger.Info(
             "Game scene lifecycle subscription registered.");
+
+        _logger.Info(
+            "Game object discovery service registered.");
     }
 
     public void Start()
@@ -255,6 +286,87 @@ public sealed class TestModule : IDCMLModule
             $"BuildIndex {eventData.BuildIndex}; " +
             $"Scene '{eventData.SceneName}'; " +
             $"Sequence {eventData.Sequence}.");
+
+        if (
+            eventData.Stage ==
+                DCMLSceneLifecycleStage.Initialized &&
+            !string.IsNullOrWhiteSpace(
+                eventData.SceneName)
+        )
+        {
+            RunObjectDiscovery(
+                eventData.SceneName);
+        }
+    }
+
+    private void RunObjectDiscovery(
+        string sceneName)
+    {
+        if (_gameObjectDiscovery is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var results =
+                _gameObjectDiscovery.Find(
+                    new DCMLGameObjectQuery(
+                        sceneName: sceneName,
+                        includeInactive: true,
+                        maxResults: 64));
+
+            _objectDiscoveryRuns++;
+            _lastObjectDiscoveryCount =
+                results.Count;
+            _lastObjectDiscoveryScene =
+                sceneName;
+            _lastObjectDiscoveryError =
+                string.Empty;
+
+            _lastObjectDiscoverySample =
+                string.Join(
+                    " || ",
+                    results
+                        .Take(8)
+                        .Select(
+                            value =>
+                                value.HierarchyPath +
+                                " [" +
+                                string.Join(
+                                    ",",
+                                    value.ComponentTypeNames.Take(4)) +
+                                "]"));
+
+            AppendProof(
+                "ObjectDiscovery");
+
+            _logger?.Info(
+                $"Game object discovery returned {results.Count} object(s) for scene '{sceneName}'.");
+        }
+        catch (Exception exception)
+        {
+            _objectDiscoveryRuns++;
+            _lastObjectDiscoveryCount =
+                0;
+            _lastObjectDiscoveryScene =
+                sceneName;
+            _lastObjectDiscoveryError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+            _lastObjectDiscoverySample =
+                string.Empty;
+
+            AppendProof(
+                "ObjectDiscoveryError");
+
+            _logger?.Error(
+                $"Game object discovery failed for scene '{sceneName}'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
     }
 
     private void EnsureInitialized()
@@ -293,6 +405,12 @@ public sealed class TestModule : IDCMLModule
         {
             throw new InvalidOperationException(
                 "The game lifecycle service is unavailable.");
+        }
+
+        if (_gameObjectDiscovery is null)
+        {
+            throw new InvalidOperationException(
+                "The game object discovery service is unavailable.");
         }
 
         if (_settings is null)
@@ -372,6 +490,15 @@ public sealed class TestModule : IDCMLModule
                     $"SceneEventsReceived: {_sceneEventsReceived}",
                     $"LastSceneEvent: {FormatLastSceneEvent()}");
 
+        var discoveryLines =
+            string.Join(
+                Environment.NewLine,
+                $"ObjectDiscoveryRuns: {_objectDiscoveryRuns}",
+                $"LastObjectDiscoveryCount: {_lastObjectDiscoveryCount}",
+                $"LastObjectDiscoveryScene: {_lastObjectDiscoveryScene}",
+                $"LastObjectDiscoveryError: {_lastObjectDiscoveryError}",
+                $"LastObjectDiscoverySample: {_lastObjectDiscoverySample}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -383,6 +510,7 @@ public sealed class TestModule : IDCMLModule
                 configurationLines,
                 eventLines,
                 gameLines,
+                discoveryLines,
                 string.Empty,
                 string.Empty);
 

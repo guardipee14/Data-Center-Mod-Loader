@@ -16,4 +16,7 @@ public static class DCMLRuntimeCapabilities
 
     public const string GameSceneLifecycle =
         "dcml.game.scene-lifecycle";
+
+    public const string GameObjectDiscovery =
+        "dcml.game.object-discovery";
 }

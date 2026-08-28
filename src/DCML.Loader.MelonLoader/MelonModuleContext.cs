@@ -15,7 +15,8 @@ public sealed class MelonModuleContext : IDCMLModuleContext
         string dataDirectory,
         string gameRoot,
         IDCMLEventBus eventBus,
-        IDCMLGameLifecycle gameLifecycle)
+        IDCMLGameLifecycle gameLifecycle,
+        IDCMLGameObjectDiscovery gameObjectDiscovery)
     {
         if (string.IsNullOrWhiteSpace(moduleId))
         {
@@ -57,6 +58,12 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 nameof(gameLifecycle));
         }
 
+        if (gameObjectDiscovery is null)
+        {
+            throw new ArgumentNullException(
+                nameof(gameObjectDiscovery));
+        }
+
         ModuleDirectory =
             Path.GetFullPath(
                 moduleDirectory);
@@ -96,7 +103,8 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                     DCMLRuntimeCapabilities.RuntimeInformation,
                     DCMLRuntimeCapabilities.Configuration,
                     DCMLRuntimeCapabilities.Events,
-                    DCMLRuntimeCapabilities.GameSceneLifecycle
+                    DCMLRuntimeCapabilities.GameSceneLifecycle,
+                    DCMLRuntimeCapabilities.GameObjectDiscovery
                 });
 
         Services =
@@ -120,6 +128,10 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 (
                     typeof(IDCMLGameLifecycle),
                     gameLifecycle
+                ),
+                (
+                    typeof(IDCMLGameObjectDiscovery),
+                    gameObjectDiscovery
                 ));
     }
 
