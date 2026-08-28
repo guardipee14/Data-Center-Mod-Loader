@@ -1,0 +1,64 @@
+name: DCML CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dcml-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-build-and-test:
+    name: Core Build & Tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore DCML Core
+        run: dotnet restore src/DCML.Core/DCML.Core.csproj
+
+      - name: Build DCML Core
+        run: dotnet build src/DCML.Core/DCML.Core.csproj --configuration Release --no-restore
+
+      - name: Restore test module
+        run: dotnet restore src/DCML.TestModule/DCML.TestModule.csproj
+
+      - name: Build test module
+        run: dotnet build src/DCML.TestModule/DCML.TestModule.csproj --configuration Release --no-restore
+
+      - name: Restore tests
+        run: dotnet restore tests/DCML.Core.Tests/DCML.Core.Tests.csproj
+
+      - name: Run tests
+        run: >-
+          dotnet test tests/DCML.Core.Tests/DCML.Core.Tests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=dcml-core-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory TestResults
+
+      - name: Upload test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dcml-test-results-${{ github.run_number }}
+          path: TestResults/
+          if-no-files-found: warn
+          retention-days: 14
