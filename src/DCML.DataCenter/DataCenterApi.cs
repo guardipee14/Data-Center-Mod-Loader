@@ -7,15 +7,23 @@ namespace DCML.DataCenter;
 public sealed class DataCenterApi
 {
     private DataCenterApi(
-        IDataCenterEntityDiscovery entities)
+        IDataCenterEntityDiscovery entities,
+        IDataCenterComponentCatalog components)
     {
         Entities =
             entities ??
             throw new ArgumentNullException(
                 nameof(entities));
+
+        Components =
+            components ??
+            throw new ArgumentNullException(
+                nameof(components));
     }
 
     public IDataCenterEntityDiscovery Entities { get; }
+
+    public IDataCenterComponentCatalog Components { get; }
 
     public static DataCenterApi Create(
         IDCMLModuleContext context)
@@ -40,6 +48,8 @@ public sealed class DataCenterApi
         return
             new DataCenterApi(
                 new DataCenterEntityDiscovery(
+                    gameObjectDiscovery),
+                new DataCenterComponentCatalog(
                     gameObjectDiscovery));
     }
 }

@@ -561,12 +561,9 @@ internal sealed class MelonGameObjectDiscovery :
                     continue;
                 }
 
-                Type runtimeType =
-                    component.GetType();
-
                 string typeName =
-                    runtimeType.FullName ??
-                    runtimeType.Name;
+                    GetComponentTypeName(
+                        component);
 
                 if (
                     !string.IsNullOrWhiteSpace(
@@ -589,6 +586,238 @@ internal sealed class MelonGameObjectDiscovery :
                     .ToArray();
         }
 
+        private static string GetComponentTypeName(
+            object component)
+        {
+            string nativeTypeName =
+                NativeIl2CppTypeNameResolver.TryGetTypeName(
+                    component);
+
+            if (
+                !string.IsNullOrWhiteSpace(
+                    nativeTypeName)
+            )
+            {
+                return nativeTypeName;
+            }
+
+            Type runtimeType =
+                component.GetType();
+
+            return
+                runtimeType.FullName ??
+                runtimeType.Name;
+        }
+
+        private static class NativeIl2CppTypeNameResolver
+        {
+            private static readonly Lazy<Resolver>
+                ResolverInstance =
+                    new Lazy<Resolver>(
+                        CreateResolver,
+                        true);
+
+            public static string TryGetTypeName(
+                object component)
+            {
+                try
+                {
+                    Resolver resolver =
+                        ResolverInstance.Value;
+
+                    if (resolver is null)
+                    {
+                        return string.Empty;
+                    }
+
+                    return
+                        resolver.GetTypeName(
+                            component);
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+
+            private static Resolver CreateResolver()
+            {
+                try
+                {
+                    Type objectBaseType =
+                        FindLoadedType(
+                            "Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase");
+
+                    Type il2CppType =
+                        FindLoadedType(
+                            "Il2CppInterop.Runtime.IL2CPP");
+
+                    PropertyInfo objectClassProperty =
+                        objectBaseType.GetProperty(
+                            "ObjectClass",
+                            BindingFlags.Public |
+                            BindingFlags.Instance);
+
+                    MethodInfo getClassNameMethod =
+                        il2CppType.GetMethod(
+                            "il2cpp_class_get_name_",
+                            BindingFlags.Public |
+                            BindingFlags.Static);
+
+                    MethodInfo getClassNamespaceMethod =
+                        il2CppType.GetMethod(
+                            "il2cpp_class_get_namespace_",
+                            BindingFlags.Public |
+                            BindingFlags.Static);
+
+                    if (
+                        objectClassProperty is null ||
+                        getClassNameMethod is null ||
+                        getClassNamespaceMethod is null
+                    )
+                    {
+                        return null;
+                    }
+
+                    return
+                        new Resolver(
+                            objectClassProperty,
+                            getClassNameMethod,
+                            getClassNamespaceMethod);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            private sealed class Resolver
+            {
+                private readonly PropertyInfo
+                    _objectClassProperty;
+
+                private readonly MethodInfo
+                    _getClassNameMethod;
+
+                private readonly MethodInfo
+                    _getClassNamespaceMethod;
+
+                public Resolver(
+                    PropertyInfo objectClassProperty,
+                    MethodInfo getClassNameMethod,
+                    MethodInfo getClassNamespaceMethod)
+                {
+                    _objectClassProperty =
+                        objectClassProperty;
+
+                    _getClassNameMethod =
+                        getClassNameMethod;
+
+                    _getClassNamespaceMethod =
+                        getClassNamespaceMethod;
+                }
+
+                public string GetTypeName(
+                    object component)
+                {
+                    object classValue =
+                        _objectClassProperty.GetValue(
+                            component);
+
+                    if (
+                        classValue is not IntPtr
+                    )
+                    {
+                        return string.Empty;
+                    }
+
+                    IntPtr classPointer =
+                        (IntPtr) classValue;
+
+                    if (
+                        classPointer ==
+                        IntPtr.Zero
+                    )
+                    {
+                        return string.Empty;
+                    }
+
+                    string className =
+                        Convert.ToString(
+                            _getClassNameMethod.Invoke(
+                                null,
+                                new object[]
+                                {
+                                    classPointer
+                                }))
+                        ?? string.Empty;
+
+                    string classNamespace =
+                        Convert.ToString(
+                            _getClassNamespaceMethod.Invoke(
+                                null,
+                                new object[]
+                                {
+                                    classPointer
+                                }))
+                        ?? string.Empty;
+
+                    if (
+                        string.IsNullOrWhiteSpace(
+                            className)
+                    )
+                    {
+                        return string.Empty;
+                    }
+
+                    className =
+                        className.Trim();
+
+                    classNamespace =
+                        classNamespace.Trim();
+
+                    if (
+                        classNamespace.StartsWith(
+                            "UnityEngine",
+                            StringComparison.Ordinal)
+                    )
+                    {
+                        return
+                            classNamespace +
+                            "." +
+                            className;
+                    }
+
+                    if (
+                        string.Equals(
+                            classNamespace,
+                            "TMPro",
+                            StringComparison.Ordinal)
+                    )
+                    {
+                        return
+                            classNamespace +
+                            "." +
+                            className;
+                    }
+
+                    if (
+                        classNamespace.Length == 0
+                    )
+                    {
+                        return
+                            "Il2Cpp." +
+                            className;
+                    }
+
+                    return
+                        "Il2Cpp." +
+                        classNamespace +
+                        "." +
+                        className;
+                }
+            }
+        }
         private static IEnumerable<object> Enumerate(
             object value)
         {

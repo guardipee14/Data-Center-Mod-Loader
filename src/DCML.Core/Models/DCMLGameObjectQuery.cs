@@ -8,7 +8,7 @@ public sealed class DCMLGameObjectQuery
         256;
 
     public const int MaximumMaxResults =
-        4096;
+        16384;
 
     public DCMLGameObjectQuery(
         string? nameContains = null,

@@ -67,6 +67,28 @@ public sealed class TestModule : IDCMLModule
     private string _lastRecommendedSample =
         string.Empty;
 
+    private int _componentInventoryRuns;
+
+    private int _lastComponentInventoryObjectCount;
+
+    private int _lastComponentInventoryTypeCount;
+
+    private int _lastComponentInventoryIl2CppTypeCount;
+
+    private int _lastComponentInventoryUnityTypeCount;
+
+    private string _lastComponentInventoryScene =
+        string.Empty;
+
+    private string _lastComponentInventoryPath =
+        string.Empty;
+
+    private string _lastComponentInventoryError =
+        string.Empty;
+
+    private string _lastComponentInventoryIl2CppSample =
+        string.Empty;
+
     public string Id =>
         "dcml.test.lifecycle";
 
@@ -326,6 +348,9 @@ public sealed class TestModule : IDCMLModule
 
             RunRecommendedDataCenterApi(
                 eventData.SceneName);
+
+            RunComponentInventory(
+                eventData.SceneName);
         }
     }
 
@@ -497,6 +522,259 @@ public sealed class TestModule : IDCMLModule
         }
     }
 
+    private void RunComponentInventory(
+        string sceneName)
+    {
+        if (
+            _context is null ||
+            _dataCenterApi is null
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            DataCenterComponentCatalogSnapshot snapshot =
+                _dataCenterApi.Components.Scan(
+                    new DataCenterComponentCatalogQuery(
+                        sceneName:
+                            sceneName,
+                        includeInactive:
+                            true,
+                        maxObjects:
+                            DataCenterComponentCatalogQuery.DefaultMaxObjects,
+                        maxExamplesPerType:
+                            DataCenterComponentCatalogQuery.DefaultMaxExamplesPerType));
+
+            _componentInventoryRuns++;
+            _lastComponentInventoryObjectCount =
+                snapshot.ScannedObjectCount;
+            _lastComponentInventoryTypeCount =
+                snapshot.UniqueComponentTypeCount;
+            _lastComponentInventoryIl2CppTypeCount =
+                snapshot.Il2CppTypeCount;
+            _lastComponentInventoryUnityTypeCount =
+                snapshot.UnityEngineTypeCount;
+            _lastComponentInventoryScene =
+                sceneName;
+            _lastComponentInventoryError =
+                string.Empty;
+
+            _lastComponentInventoryIl2CppSample =
+                string.Join(
+                    " || ",
+                    snapshot.ComponentTypes
+                        .Where(
+                            value =>
+                                value.IsIl2Cpp)
+                        .OrderByDescending(
+                            value =>
+                                value.ObjectCount)
+                        .ThenBy(
+                            value =>
+                                value.TypeName,
+                            StringComparer.Ordinal)
+                        .Take(12)
+                        .Select(
+                            value =>
+                                value.TypeName +
+                                "=" +
+                                value.ObjectCount));
+
+            _lastComponentInventoryPath =
+                WriteComponentInventory(
+                    snapshot);
+
+            AppendProof(
+                "ComponentInventory");
+
+            _logger?.Info(
+                $"Component inventory scanned {snapshot.ScannedObjectCount} object(s), " +
+                $"{snapshot.UniqueComponentTypeCount} unique component type(s), and " +
+                $"{snapshot.Il2CppTypeCount} Il2Cpp type(s) for scene '{sceneName}'.");
+        }
+        catch (Exception exception)
+        {
+            _componentInventoryRuns++;
+            _lastComponentInventoryObjectCount =
+                0;
+            _lastComponentInventoryTypeCount =
+                0;
+            _lastComponentInventoryIl2CppTypeCount =
+                0;
+            _lastComponentInventoryUnityTypeCount =
+                0;
+            _lastComponentInventoryScene =
+                sceneName;
+            _lastComponentInventoryPath =
+                string.Empty;
+            _lastComponentInventoryIl2CppSample =
+                string.Empty;
+            _lastComponentInventoryError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            AppendProof(
+                "ComponentInventoryError");
+
+            _logger?.Error(
+                $"Component inventory failed for scene '{sceneName}'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private string WriteComponentInventory(
+        DataCenterComponentCatalogSnapshot snapshot)
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException(
+                "The module context is unavailable.");
+        }
+
+        Directory.CreateDirectory(
+            _context.DataDirectory);
+
+        string safeSceneName =
+            MakeSafeFileName(
+                string.IsNullOrWhiteSpace(
+                    snapshot.SceneName)
+                    ? "unnamed-scene"
+                    : snapshot.SceneName);
+
+        string inventoryPath =
+            Path.Combine(
+                _context.DataDirectory,
+                "DCML.ComponentInventory." +
+                safeSceneName +
+                ".log");
+
+        string il2CppSection =
+            FormatComponentSection(
+                "Il2Cpp component types",
+                snapshot.ComponentTypes
+                    .Where(
+                        value =>
+                            value.IsIl2Cpp));
+
+        string unitySection =
+            FormatComponentSection(
+                "UnityEngine component types",
+                snapshot.ComponentTypes
+                    .Where(
+                        value =>
+                            value.IsUnityEngine));
+
+        string otherSection =
+            FormatComponentSection(
+                "Other component types",
+                snapshot.ComponentTypes
+                    .Where(
+                        value =>
+                            !value.IsIl2Cpp &&
+                            !value.IsUnityEngine));
+
+        string content =
+            string.Join(
+                Environment.NewLine,
+                "DCML Data Center Component Inventory",
+                $"UTC: {DateTime.UtcNow:O}",
+                $"Scene: {snapshot.SceneName}",
+                $"ScannedObjectCount: {snapshot.ScannedObjectCount}",
+                $"UniqueComponentTypeCount: {snapshot.UniqueComponentTypeCount}",
+                $"Il2CppTypeCount: {snapshot.Il2CppTypeCount}",
+                $"UnityEngineTypeCount: {snapshot.UnityEngineTypeCount}",
+                string.Empty,
+                il2CppSection,
+                string.Empty,
+                unitySection,
+                string.Empty,
+                otherSection,
+                string.Empty);
+
+        File.WriteAllText(
+            inventoryPath,
+            content);
+
+        return
+            inventoryPath;
+    }
+
+    private static string FormatComponentSection(
+        string title,
+        System.Collections.Generic.IEnumerable<DataCenterComponentTypeInfo> types)
+    {
+        string[] lines =
+            types
+                .OrderByDescending(
+                    value =>
+                        value.ObjectCount)
+                .ThenBy(
+                    value =>
+                        value.TypeName,
+                    StringComparer.Ordinal)
+                .Select(
+                    value =>
+                        value.TypeName +
+                        " | Objects=" +
+                        value.ObjectCount +
+                        " | Active=" +
+                        value.ActiveObjectCount +
+                        " | Inactive=" +
+                        value.InactiveObjectCount +
+                        " | Examples=" +
+                        string.Join(
+                            " || ",
+                            value.ExampleHierarchyPaths))
+                .ToArray();
+
+        if (lines.Length == 0)
+        {
+            return
+                title +
+                Environment.NewLine +
+                "(none)";
+        }
+
+        return
+            title +
+            Environment.NewLine +
+            string.Join(
+                Environment.NewLine,
+                lines);
+    }
+
+    private static string MakeSafeFileName(
+        string value)
+    {
+        char[] invalid =
+            Path.GetInvalidFileNameChars();
+
+        var characters =
+            value
+                .Select(
+                    character =>
+                        invalid.Contains(
+                            character)
+                            ? '_'
+                            : character)
+                .ToArray();
+
+        string normalized =
+            new string(
+                characters)
+                .Trim();
+
+        return
+            normalized.Length == 0
+                ? "unnamed-scene"
+                : normalized;
+    }
+
     private void EnsureInitialized()
     {
         if (_context is null)
@@ -643,6 +921,19 @@ public sealed class TestModule : IDCMLModule
                 $"LastRecommendedError: {_lastRecommendedError}",
                 $"LastRecommendedSample: {_lastRecommendedSample}");
 
+        var componentInventoryLines =
+            string.Join(
+                Environment.NewLine,
+                $"ComponentInventoryRuns: {_componentInventoryRuns}",
+                $"LastComponentInventoryObjectCount: {_lastComponentInventoryObjectCount}",
+                $"LastComponentInventoryTypeCount: {_lastComponentInventoryTypeCount}",
+                $"LastComponentInventoryIl2CppTypeCount: {_lastComponentInventoryIl2CppTypeCount}",
+                $"LastComponentInventoryUnityTypeCount: {_lastComponentInventoryUnityTypeCount}",
+                $"LastComponentInventoryScene: {_lastComponentInventoryScene}",
+                $"LastComponentInventoryPath: {_lastComponentInventoryPath}",
+                $"LastComponentInventoryError: {_lastComponentInventoryError}",
+                $"LastComponentInventoryIl2CppSample: {_lastComponentInventoryIl2CppSample}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -656,6 +947,7 @@ public sealed class TestModule : IDCMLModule
                 gameLines,
                 discoveryLines,
                 recommendedApiLines,
+                componentInventoryLines,
                 string.Empty,
                 string.Empty);
 
