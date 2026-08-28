@@ -15,6 +15,8 @@ namespace DCML.Loader.MelonLoader
 
         private DCMLEventBus _eventBus;
 
+        private MelonGameLifecycle _gameLifecycle;
+
         public override void OnInitializeMelon()
         {
             try
@@ -54,6 +56,36 @@ namespace DCML.Loader.MelonLoader
 
             LoggerInstance.Msg(
                 "[DCML] Runtime stopped.");
+        }
+
+        public override void OnSceneWasLoaded(
+            int buildIndex,
+            string sceneName)
+        {
+            ReportSceneLifecycle(
+                DCMLSceneLifecycleStage.Loaded,
+                buildIndex,
+                sceneName);
+        }
+
+        public override void OnSceneWasInitialized(
+            int buildIndex,
+            string sceneName)
+        {
+            ReportSceneLifecycle(
+                DCMLSceneLifecycleStage.Initialized,
+                buildIndex,
+                sceneName);
+        }
+
+        public override void OnSceneWasUnloaded(
+            int buildIndex,
+            string sceneName)
+        {
+            ReportSceneLifecycle(
+                DCMLSceneLifecycleStage.Unloaded,
+                buildIndex,
+                sceneName);
         }
 
         private void StartDCML()
@@ -122,13 +154,18 @@ namespace DCML.Loader.MelonLoader
             _eventBus =
                 new DCMLEventBus();
 
+            _gameLifecycle =
+                new MelonGameLifecycle(
+                    _eventBus);
+
             _runtime =
                 new DCMLModuleRuntime(
                     new MelonModuleActivator(),
                     new MelonModuleContextFactory(
                         dataRoot,
                         gameRoot,
-                        _eventBus));
+                        _eventBus,
+                        _gameLifecycle));
 
             DCMLModuleRuntimeResult startResult =
                 _runtime.Start(
@@ -159,6 +196,42 @@ namespace DCML.Loader.MelonLoader
                 " discovery failure(s), " +
                 runningCount +
                 " running module(s).");
+        }
+
+        private void ReportSceneLifecycle(
+            DCMLSceneLifecycleStage stage,
+            int buildIndex,
+            string sceneName)
+        {
+            if (_gameLifecycle == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _gameLifecycle.Report(
+                    stage,
+                    buildIndex,
+                    sceneName);
+
+                LoggerInstance.Msg(
+                    "[DCML] Scene " +
+                    stage +
+                    ": " +
+                    buildIndex +
+                    " '" +
+                    (sceneName ?? string.Empty) +
+                    "'.");
+            }
+            catch (Exception exception)
+            {
+                LoggerInstance.Error(
+                    "[DCML] Scene lifecycle delivery failed.");
+
+                LoggerInstance.Error(
+                    exception.ToString());
+            }
         }
 
         private static string GetModulesRoot()

@@ -15,10 +15,13 @@ public sealed class MelonModuleContextFactory :
 
     private readonly IDCMLEventBus _eventBus;
 
+    private readonly IDCMLGameLifecycle _gameLifecycle;
+
     public MelonModuleContextFactory(
         string dataRoot,
         string gameRoot,
-        IDCMLEventBus eventBus)
+        IDCMLEventBus eventBus,
+        IDCMLGameLifecycle gameLifecycle)
     {
         if (string.IsNullOrWhiteSpace(dataRoot))
         {
@@ -38,6 +41,11 @@ public sealed class MelonModuleContextFactory :
             eventBus ??
             throw new ArgumentNullException(
                 nameof(eventBus));
+
+        _gameLifecycle =
+            gameLifecycle ??
+            throw new ArgumentNullException(
+                nameof(gameLifecycle));
 
         _dataRoot =
             Path.GetFullPath(
@@ -76,7 +84,8 @@ public sealed class MelonModuleContextFactory :
                     package.PackageDirectory),
                 moduleDataDirectory,
                 _gameRoot,
-                _eventBus);
+                _eventBus,
+                _gameLifecycle);
     }
 
     private static string CreateSafeDirectoryName(

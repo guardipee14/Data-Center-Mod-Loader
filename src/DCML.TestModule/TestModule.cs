@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using DCML.Core.Abstractions;
+using DCML.Core.Models;
 
 namespace DCML.TestModule;
 
@@ -16,11 +17,19 @@ public sealed class TestModule : IDCMLModule
 
     private IDCMLEventBus? _eventBus;
 
+    private IDCMLGameLifecycle? _gameLifecycle;
+
     private IDisposable? _probeSubscription;
+
+    private IDisposable? _sceneSubscription;
 
     private ProbeSettings? _settings;
 
     private int _eventsReceived;
+
+    private int _sceneEventsReceived;
+
+    private DCMLSceneLifecycleEvent? _lastSceneEvent;
 
     public string Id =>
         "dcml.test.lifecycle";
@@ -59,6 +68,11 @@ public sealed class TestModule : IDCMLModule
                 typeof(IDCMLEventBus))
             as IDCMLEventBus;
 
+        _gameLifecycle =
+            context.Services.GetService(
+                typeof(IDCMLGameLifecycle))
+            as IDCMLGameLifecycle;
+
         if (_logger is null)
         {
             throw new InvalidOperationException(
@@ -83,6 +97,12 @@ public sealed class TestModule : IDCMLModule
                 "DCML did not provide IDCMLEventBus through the module service provider.");
         }
 
+        if (_gameLifecycle is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameLifecycle through the module service provider.");
+        }
+
         if (!string.Equals(
                 _runtimeInfo.ModuleId,
                 Id,
@@ -97,7 +117,8 @@ public sealed class TestModule : IDCMLModule
             DCMLRuntimeCapabilities.Logging,
             DCMLRuntimeCapabilities.RuntimeInformation,
             DCMLRuntimeCapabilities.Configuration,
-            DCMLRuntimeCapabilities.Events
+            DCMLRuntimeCapabilities.Events,
+            DCMLRuntimeCapabilities.GameSceneLifecycle
         })
         {
             if (!_runtimeInfo.HasCapability(capability))
@@ -124,6 +145,10 @@ public sealed class TestModule : IDCMLModule
             _eventBus.Subscribe<ProbeEvent>(
                 OnProbeEvent);
 
+        _sceneSubscription =
+            _eventBus.Subscribe<DCMLSceneLifecycleEvent>(
+                OnSceneLifecycleEvent);
+
         AppendProof(
             "Initialize");
 
@@ -142,6 +167,9 @@ public sealed class TestModule : IDCMLModule
 
         _logger.Info(
             "Event subscription registered.");
+
+        _logger.Info(
+            "Game scene lifecycle subscription registered.");
     }
 
     public void Start()
@@ -189,6 +217,10 @@ public sealed class TestModule : IDCMLModule
         _probeSubscription =
             null;
 
+        _sceneSubscription?.Dispose();
+        _sceneSubscription =
+            null;
+
         AppendProof(
             "Stop");
 
@@ -206,6 +238,23 @@ public sealed class TestModule : IDCMLModule
 
         _logger?.Info(
             $"Event received from '{eventData.SourceModuleId}' at stage '{eventData.Stage}'.");
+    }
+
+    private void OnSceneLifecycleEvent(
+        DCMLSceneLifecycleEvent eventData)
+    {
+        _sceneEventsReceived++;
+        _lastSceneEvent =
+            eventData;
+
+        AppendProof(
+            "SceneEvent");
+
+        _logger?.Info(
+            $"Scene event received: {eventData.Stage}; " +
+            $"BuildIndex {eventData.BuildIndex}; " +
+            $"Scene '{eventData.SceneName}'; " +
+            $"Sequence {eventData.Sequence}.");
     }
 
     private void EnsureInitialized()
@@ -240,6 +289,12 @@ public sealed class TestModule : IDCMLModule
                 "The module event bus is unavailable.");
         }
 
+        if (_gameLifecycle is null)
+        {
+            throw new InvalidOperationException(
+                "The game lifecycle service is unavailable.");
+        }
+
         if (_settings is null)
         {
             throw new InvalidOperationException(
@@ -250,6 +305,12 @@ public sealed class TestModule : IDCMLModule
         {
             throw new InvalidOperationException(
                 "The module event subscription is unavailable.");
+        }
+
+        if (_sceneSubscription is null)
+        {
+            throw new InvalidOperationException(
+                "The module scene lifecycle subscription is unavailable.");
         }
     }
 
@@ -298,6 +359,19 @@ public sealed class TestModule : IDCMLModule
                 Environment.NewLine,
                 $"EventsReceived: {_eventsReceived}");
 
+        var gameLines =
+            _gameLifecycle is null
+                ? string.Empty
+                : string.Join(
+                    Environment.NewLine,
+                    $"SceneEventCount: {_gameLifecycle.SceneEventCount}",
+                    $"HasCurrentScene: {_gameLifecycle.HasCurrentScene}",
+                    $"CurrentSceneBuildIndex: {_gameLifecycle.CurrentSceneBuildIndex}",
+                    $"CurrentSceneName: {_gameLifecycle.CurrentSceneName}",
+                    $"CurrentSceneStage: {_gameLifecycle.CurrentSceneStage}",
+                    $"SceneEventsReceived: {_sceneEventsReceived}",
+                    $"LastSceneEvent: {FormatLastSceneEvent()}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -308,12 +382,27 @@ public sealed class TestModule : IDCMLModule
                 runtimeLines,
                 configurationLines,
                 eventLines,
+                gameLines,
                 string.Empty,
                 string.Empty);
 
         File.AppendAllText(
             proofPath,
             entry);
+    }
+
+    private string FormatLastSceneEvent()
+    {
+        if (_lastSceneEvent is null)
+        {
+            return "None";
+        }
+
+        return
+            $"{_lastSceneEvent.Stage}|" +
+            $"{_lastSceneEvent.BuildIndex}|" +
+            $"{_lastSceneEvent.SceneName}|" +
+            $"{_lastSceneEvent.Sequence}";
     }
 
     private sealed class ProbeEvent
