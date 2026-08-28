@@ -14,7 +14,8 @@ public sealed class DataCenterEntityRule
         string? hierarchyStartsWith = null,
         string? hierarchyContains = null,
         string? componentTypeName = null,
-        string? componentTypePrefix = null)
+        string? componentTypePrefix = null,
+        string? componentTypeAssignableTo = null)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -59,12 +60,17 @@ public sealed class DataCenterEntityRule
             Normalize(
                 componentTypePrefix);
 
+        ComponentTypeAssignableTo =
+            Normalize(
+                componentTypeAssignableTo);
+
         if (
             NameContains.Length == 0 &&
             HierarchyStartsWith.Length == 0 &&
             HierarchyContains.Length == 0 &&
             ComponentTypeName.Length == 0 &&
-            ComponentTypePrefix.Length == 0
+            ComponentTypePrefix.Length == 0 &&
+            ComponentTypeAssignableTo.Length == 0
         )
         {
             throw new ArgumentException(
@@ -88,8 +94,20 @@ public sealed class DataCenterEntityRule
 
     public string ComponentTypePrefix { get; }
 
+    public string ComponentTypeAssignableTo { get; }
+
     public bool IsMatch(
         DCMLGameObjectInfo source)
+    {
+        return
+            IsMatch(
+                source,
+                null);
+    }
+
+    public bool IsMatch(
+        DCMLGameObjectInfo source,
+        Func<string, string, bool>? isAssignableTo)
     {
         if (source is null)
         {
@@ -147,6 +165,17 @@ public sealed class DataCenterEntityRule
             return false;
         }
 
+        if (
+            ComponentTypeAssignableTo.Length > 0 &&
+            !HasAssignableComponent(
+                source.ComponentTypeNames,
+                ComponentTypeAssignableTo,
+                isAssignableTo)
+        )
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -183,6 +212,72 @@ public sealed class DataCenterEntityRule
         }
 
         return false;
+    }
+
+    private static bool HasAssignableComponent(
+        IReadOnlyList<string> names,
+        string targetType,
+        Func<string, string, bool>? isAssignableTo)
+    {
+        foreach (string value in names)
+        {
+            if (
+                IsSameTypeName(
+                    value,
+                    targetType)
+            )
+            {
+                return true;
+            }
+
+            if (
+                isAssignableTo is not null &&
+                isAssignableTo(
+                    value,
+                    targetType)
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsSameTypeName(
+        string left,
+        string right)
+    {
+        if (
+            string.Equals(
+                left,
+                right,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return true;
+        }
+
+        return
+            string.Equals(
+                GetSimpleTypeName(
+                    left),
+                GetSimpleTypeName(
+                    right),
+                StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetSimpleTypeName(
+        string value)
+    {
+        int lastDot =
+            value.LastIndexOf('.');
+
+        return
+            lastDot >= 0
+                ? value.Substring(
+                    lastDot + 1)
+                : value;
     }
 
     private static bool HasComponentPrefix(

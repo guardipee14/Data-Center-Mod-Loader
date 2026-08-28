@@ -15,6 +15,9 @@ public sealed class DataCenterEntityDiscovery :
     private readonly IDCMLGameObjectDiscovery
         _gameObjectDiscovery;
 
+    private readonly DataCenterTypeHierarchy?
+        _typeHierarchy;
+
     private readonly IReadOnlyList<DataCenterEntityRule>
         _rules;
 
@@ -22,12 +25,34 @@ public sealed class DataCenterEntityDiscovery :
         IDCMLGameObjectDiscovery gameObjectDiscovery)
         : this(
             gameObjectDiscovery,
+            null,
             DataCenterDefaultEntityRules.Create())
     {
     }
 
     public DataCenterEntityDiscovery(
         IDCMLGameObjectDiscovery gameObjectDiscovery,
+        IDCMLGameTypeCatalog? gameTypeCatalog)
+        : this(
+            gameObjectDiscovery,
+            gameTypeCatalog,
+            DataCenterDefaultEntityRules.Create())
+    {
+    }
+
+    public DataCenterEntityDiscovery(
+        IDCMLGameObjectDiscovery gameObjectDiscovery,
+        IEnumerable<DataCenterEntityRule> rules)
+        : this(
+            gameObjectDiscovery,
+            null,
+            rules)
+    {
+    }
+
+    public DataCenterEntityDiscovery(
+        IDCMLGameObjectDiscovery gameObjectDiscovery,
+        IDCMLGameTypeCatalog? gameTypeCatalog,
         IEnumerable<DataCenterEntityRule> rules)
     {
         _gameObjectDiscovery =
@@ -40,6 +65,12 @@ public sealed class DataCenterEntityDiscovery :
             throw new ArgumentNullException(
                 nameof(rules));
         }
+
+        _typeHierarchy =
+            gameTypeCatalog is null
+                ? null
+                : new DataCenterTypeHierarchy(
+                    gameTypeCatalog);
 
         _rules =
             rules
@@ -62,62 +93,89 @@ public sealed class DataCenterEntityDiscovery :
                 nameof(query));
         }
 
-        IReadOnlyList<DCMLGameObjectInfo> objects =
-            _gameObjectDiscovery.Find(
-                new DCMLGameObjectQuery(
-                    nameContains:
-                        query.NameContains,
-                    sceneName:
-                        query.SceneName,
-                    componentTypeName:
-                        query.ComponentTypeName,
-                    includeInactive:
-                        query.IncludeInactive,
-                    maxResults:
-                        DCMLGameObjectQuery.MaximumMaxResults));
-
         var results =
             new List<DataCenterEntityInfo>();
 
-        foreach (
-            DCMLGameObjectInfo source in objects)
+        int skipResults =
+            0;
+
+        while (
+            results.Count <
+            query.MaxResults
+        )
         {
-            DataCenterEntityInfo entity =
-                Classify(
-                    source);
+            IReadOnlyList<DCMLGameObjectInfo> objects =
+                _gameObjectDiscovery.Find(
+                    new DCMLGameObjectQuery(
+                        nameContains:
+                            query.NameContains,
+                        sceneName:
+                            query.SceneName,
+                        componentTypeName:
+                            query.ComponentTypeName,
+                        includeInactive:
+                            query.IncludeInactive,
+                        maxResults:
+                            DCMLGameObjectQuery.MaximumMaxResults,
+                        skipResults:
+                            skipResults));
 
-            if (
-                !query.IncludeUnknown &&
-                string.Equals(
-                    entity.Kind,
-                    DataCenterEntityKinds.Unknown,
-                    StringComparison.OrdinalIgnoreCase)
-            )
+            foreach (
+                DCMLGameObjectInfo source in
+                objects)
             {
-                continue;
-            }
+                DataCenterEntityInfo entity =
+                    Classify(
+                        source);
 
-            if (
-                query.Kind.Length > 0 &&
-                !string.Equals(
-                    entity.Kind,
-                    query.Kind,
-                    StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                continue;
-            }
+                if (
+                    !query.IncludeUnknown &&
+                    string.Equals(
+                        entity.Kind,
+                        DataCenterEntityKinds.Unknown,
+                        StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    continue;
+                }
 
-            results.Add(
-                entity);
+                if (
+                    query.Kind.Length > 0 &&
+                    !string.Equals(
+                        entity.Kind,
+                        query.Kind,
+                        StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    continue;
+                }
+
+                results.Add(
+                    entity);
+
+                if (
+                    results.Count >=
+                    query.MaxResults
+                )
+                {
+                    break;
+                }
+            }
 
             if (
                 results.Count >=
-                query.MaxResults
+                    query.MaxResults ||
+                objects.Count <
+                    DCMLGameObjectQuery.MaximumMaxResults
             )
             {
                 break;
             }
+
+            skipResults =
+                checked(
+                    skipResults +
+                    DCMLGameObjectQuery.MaximumMaxResults);
         }
 
         return
@@ -133,13 +191,23 @@ public sealed class DataCenterEntityDiscovery :
                 nameof(source));
         }
 
+        Func<string, string, bool>? isAssignableTo =
+            null;
+
+        if (_typeHierarchy is not null)
+        {
+            isAssignableTo =
+                _typeHierarchy.IsAssignableTo;
+        }
+
         foreach (
             DataCenterEntityRule rule in
             _rules)
         {
             if (
                 rule.IsMatch(
-                    source)
+                    source,
+                    isAssignableTo)
             )
             {
                 return

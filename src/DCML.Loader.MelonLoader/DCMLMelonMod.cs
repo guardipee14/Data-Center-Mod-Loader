@@ -19,6 +19,8 @@ namespace DCML.Loader.MelonLoader
 
         private MelonGameObjectDiscovery _gameObjectDiscovery;
 
+        private MelonGameTypeCatalog _gameTypeCatalog;
+
         public override void OnInitializeMelon()
         {
             try
@@ -163,6 +165,9 @@ namespace DCML.Loader.MelonLoader
             _gameObjectDiscovery =
                 new MelonGameObjectDiscovery();
 
+            _gameTypeCatalog =
+                new MelonGameTypeCatalog();
+
             _runtime =
                 new DCMLModuleRuntime(
                     new MelonModuleActivator(),
@@ -171,7 +176,8 @@ namespace DCML.Loader.MelonLoader
                         gameRoot,
                         _eventBus,
                         _gameLifecycle,
-                        _gameObjectDiscovery));
+                        _gameObjectDiscovery,
+                        _gameTypeCatalog));
 
             DCMLModuleRuntimeResult startResult =
                 _runtime.Start(

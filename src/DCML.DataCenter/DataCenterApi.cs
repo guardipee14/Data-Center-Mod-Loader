@@ -45,10 +45,16 @@ public sealed class DataCenterApi
                 "The optional DCML.DataCenter API requires IDCMLGameObjectDiscovery to be available.");
         }
 
+        IDCMLGameTypeCatalog? gameTypeCatalog =
+            context.Services.GetService(
+                typeof(IDCMLGameTypeCatalog))
+            as IDCMLGameTypeCatalog;
+
         return
             new DataCenterApi(
                 new DataCenterEntityDiscovery(
-                    gameObjectDiscovery),
+                    gameObjectDiscovery,
+                    gameTypeCatalog),
                 new DataCenterComponentCatalog(
                     gameObjectDiscovery));
     }

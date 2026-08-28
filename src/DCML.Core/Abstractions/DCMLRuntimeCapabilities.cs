@@ -19,4 +19,7 @@ public static class DCMLRuntimeCapabilities
 
     public const string GameObjectDiscovery =
         "dcml.game.object-discovery";
+
+    public const string GameTypeCatalog =
+        "dcml.game.type-catalog";
 }

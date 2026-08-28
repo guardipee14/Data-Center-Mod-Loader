@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DCML.Core.Abstractions;
@@ -10,6 +11,25 @@ namespace DCML.TestModule;
 
 public sealed class TestModule : IDCMLModule
 {
+    private static readonly string[] GameTypeKeywords =
+    {
+        "Server",
+        "Rack",
+        "Switch",
+        "Router",
+        "Firewall",
+        "Device",
+        "Port",
+        "SFP",
+        "QSFP",
+        "Cable",
+        "Factory",
+        "Machine",
+        "Hacking",
+        "Coding",
+        "Packet"
+    };
+
     private IDCMLModuleContext? _context;
 
     private IDCMLLogger? _logger;
@@ -23,6 +43,8 @@ public sealed class TestModule : IDCMLModule
     private IDCMLGameLifecycle? _gameLifecycle;
 
     private IDCMLGameObjectDiscovery? _gameObjectDiscovery;
+
+    private IDCMLGameTypeCatalog? _gameTypeCatalog;
 
     private DataCenterApi? _dataCenterApi;
 
@@ -67,6 +89,23 @@ public sealed class TestModule : IDCMLModule
     private string _lastRecommendedSample =
         string.Empty;
 
+    private int _targetedSemanticRuns;
+
+    private string _lastTargetedSemanticScene =
+        string.Empty;
+
+    private string _lastTargetedSemanticCounts =
+        string.Empty;
+
+    private string _lastTargetedSemanticAtLimit =
+        string.Empty;
+
+    private string _lastTargetedSemanticError =
+        string.Empty;
+
+    private string _lastTargetedSemanticSample =
+        string.Empty;
+
     private int _componentInventoryRuns;
 
     private int _lastComponentInventoryObjectCount;
@@ -92,6 +131,27 @@ public sealed class TestModule : IDCMLModule
     private int _lastComponentInventoryPagesScanned;
 
     private bool _lastComponentInventoryComplete;
+
+    private int _gameTypeCatalogRuns;
+
+    private int _lastGameTypeCatalogTypeCount;
+
+    private bool _lastGameTypeCatalogAtResultLimit;
+
+    private string _lastGameTypeCatalogScene =
+        string.Empty;
+
+    private string _lastGameTypeCatalogPath =
+        string.Empty;
+
+    private string _lastGameTypeCatalogKeywordCounts =
+        string.Empty;
+
+    private string _lastGameTypeCatalogError =
+        string.Empty;
+
+    private string _lastGameTypeCatalogSample =
+        string.Empty;
 
     public string Id =>
         "dcml.test.lifecycle";
@@ -140,6 +200,11 @@ public sealed class TestModule : IDCMLModule
                 typeof(IDCMLGameObjectDiscovery))
             as IDCMLGameObjectDiscovery;
 
+        _gameTypeCatalog =
+            context.Services.GetService(
+                typeof(IDCMLGameTypeCatalog))
+            as IDCMLGameTypeCatalog;
+
         if (_logger is null)
         {
             throw new InvalidOperationException(
@@ -176,6 +241,12 @@ public sealed class TestModule : IDCMLModule
                 "DCML did not provide IDCMLGameObjectDiscovery through the module service provider.");
         }
 
+        if (_gameTypeCatalog is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameTypeCatalog through the module service provider.");
+        }
+
         _dataCenterApi =
             DataCenterApi.Create(
                 context);
@@ -196,7 +267,8 @@ public sealed class TestModule : IDCMLModule
             DCMLRuntimeCapabilities.Configuration,
             DCMLRuntimeCapabilities.Events,
             DCMLRuntimeCapabilities.GameSceneLifecycle,
-            DCMLRuntimeCapabilities.GameObjectDiscovery
+            DCMLRuntimeCapabilities.GameObjectDiscovery,
+            DCMLRuntimeCapabilities.GameTypeCatalog
         })
         {
             if (!_runtimeInfo.HasCapability(capability))
@@ -251,6 +323,9 @@ public sealed class TestModule : IDCMLModule
 
         _logger.Info(
             "Game object discovery service registered.");
+
+        _logger.Info(
+            "Game type catalog service registered.");
 
         _logger.Info(
             "Optional DCML.DataCenter recommended API enabled by this module.");
@@ -353,7 +428,13 @@ public sealed class TestModule : IDCMLModule
             RunRecommendedDataCenterApi(
                 eventData.SceneName);
 
+            RunTargetedSemanticDiscovery(
+                eventData.SceneName);
+
             RunComponentInventory(
+                eventData.SceneName);
+
+            RunGameTypeCatalog(
                 eventData.SceneName);
         }
     }
@@ -520,6 +601,126 @@ public sealed class TestModule : IDCMLModule
 
             _logger?.Error(
                 $"Optional DCML.DataCenter API failed for scene '{sceneName}'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private void RunTargetedSemanticDiscovery(
+        string sceneName)
+    {
+        if (_dataCenterApi is null)
+        {
+            return;
+        }
+
+        const int maxPerKind =
+            64;
+
+        string[] kinds =
+        {
+            DataCenterEntityKinds.Server,
+            DataCenterEntityKinds.Rack,
+            DataCenterEntityKinds.NetworkDevice,
+            DataCenterEntityKinds.Cable
+        };
+
+        try
+        {
+            var resultsByKind =
+                new Dictionary<string, IReadOnlyList<DataCenterEntityInfo>>(
+                    StringComparer.OrdinalIgnoreCase);
+
+            foreach (
+                string kind in
+                kinds)
+            {
+                resultsByKind[kind] =
+                    _dataCenterApi.Entities.Find(
+                        new DataCenterEntityQuery(
+                            kind:
+                                kind,
+                            sceneName:
+                                sceneName,
+                            includeInactive:
+                                true,
+                            includeUnknown:
+                                false,
+                            maxResults:
+                                maxPerKind));
+            }
+
+            _targetedSemanticRuns++;
+            _lastTargetedSemanticScene =
+                sceneName;
+            _lastTargetedSemanticError =
+                string.Empty;
+
+            _lastTargetedSemanticCounts =
+                string.Join(
+                    ", ",
+                    kinds.Select(
+                        kind =>
+                            kind +
+                            "=" +
+                            resultsByKind[kind].Count));
+
+            _lastTargetedSemanticAtLimit =
+                string.Join(
+                    ", ",
+                    kinds.Where(
+                        kind =>
+                            resultsByKind[kind].Count >=
+                            maxPerKind));
+
+            _lastTargetedSemanticSample =
+                string.Join(
+                    " || ",
+                    kinds.SelectMany(
+                            kind =>
+                                resultsByKind[kind]
+                                    .Take(3))
+                        .Select(
+                            value =>
+                                value.Kind +
+                                ":" +
+                                value.HierarchyPath +
+                                " [" +
+                                value.ClassificationRuleId +
+                                "]"));
+
+            AppendProof(
+                "TargetedSemanticDiscovery");
+
+            _logger?.Info(
+                "Targeted semantic discovery for scene '" +
+                sceneName +
+                "' returned " +
+                _lastTargetedSemanticCounts +
+                ".");
+        }
+        catch (Exception exception)
+        {
+            _targetedSemanticRuns++;
+            _lastTargetedSemanticScene =
+                sceneName;
+            _lastTargetedSemanticCounts =
+                string.Empty;
+            _lastTargetedSemanticAtLimit =
+                string.Empty;
+            _lastTargetedSemanticError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+            _lastTargetedSemanticSample =
+                string.Empty;
+
+            AppendProof(
+                "TargetedSemanticDiscoveryError");
+
+            _logger?.Error(
+                $"Targeted semantic discovery failed for scene '{sceneName}'.");
 
             _logger?.Error(
                 exception.ToString());
@@ -795,6 +996,268 @@ public sealed class TestModule : IDCMLModule
                 : normalized;
     }
 
+    private void RunGameTypeCatalog(
+        string sceneName)
+    {
+        if (
+            _context is null ||
+            _gameTypeCatalog is null
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<DCMLGameTypeInfo> allTypes =
+                _gameTypeCatalog.Find(
+                    new DCMLGameTypeQuery(
+                        fullNameStartsWith:
+                            "Il2Cpp.",
+                        maxResults:
+                            DCMLGameTypeQuery.MaximumMaxResults));
+
+            var keywordResults =
+                GameTypeKeywords
+                    .Select(
+                        keyword =>
+                            new GameTypeKeywordResult(
+                                keyword,
+                                allTypes
+                                    .Where(
+                                        value =>
+                                            value.FullName.IndexOf(
+                                                keyword,
+                                                StringComparison.OrdinalIgnoreCase) >= 0)
+                                    .ToArray()))
+                    .ToArray();
+
+            _gameTypeCatalogRuns++;
+            _lastGameTypeCatalogTypeCount =
+                allTypes.Count;
+            _lastGameTypeCatalogAtResultLimit =
+                allTypes.Count ==
+                DCMLGameTypeQuery.MaximumMaxResults;
+            _lastGameTypeCatalogScene =
+                sceneName;
+            _lastGameTypeCatalogError =
+                string.Empty;
+
+            _lastGameTypeCatalogKeywordCounts =
+                string.Join(
+                    ", ",
+                    keywordResults
+                        .Select(
+                            value =>
+                                value.Keyword +
+                                "=" +
+                                value.Types.Count));
+
+            _lastGameTypeCatalogSample =
+                string.Join(
+                    " || ",
+                    keywordResults
+                        .SelectMany(
+                            value =>
+                                value.Types)
+                        .GroupBy(
+                            value =>
+                                value.AssemblyName +
+                                "|" +
+                                value.FullName,
+                            StringComparer.OrdinalIgnoreCase)
+                        .Select(
+                            group =>
+                                group.First())
+                        .OrderBy(
+                            value =>
+                                value.FullName,
+                            StringComparer.OrdinalIgnoreCase)
+                        .Take(16)
+                        .Select(
+                            value =>
+                                value.FullName +
+                                " [" +
+                                value.Kind +
+                                "; base=" +
+                                (
+                                    value.BaseTypeFullName.Length == 0
+                                        ? "none"
+                                        : value.BaseTypeFullName
+                                ) +
+                                "]"));
+
+            _lastGameTypeCatalogPath =
+                WriteGameTypeCatalog(
+                    sceneName,
+                    allTypes,
+                    keywordResults);
+
+            AppendProof(
+                "GameTypeCatalog");
+
+            _logger?.Info(
+                $"Game type catalog found {allTypes.Count} loaded Il2Cpp type(s) for scene '{sceneName}'.");
+        }
+        catch (Exception exception)
+        {
+            _gameTypeCatalogRuns++;
+            _lastGameTypeCatalogTypeCount =
+                0;
+            _lastGameTypeCatalogAtResultLimit =
+                false;
+            _lastGameTypeCatalogScene =
+                sceneName;
+            _lastGameTypeCatalogPath =
+                string.Empty;
+            _lastGameTypeCatalogKeywordCounts =
+                string.Empty;
+            _lastGameTypeCatalogSample =
+                string.Empty;
+            _lastGameTypeCatalogError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            AppendProof(
+                "GameTypeCatalogError");
+
+            _logger?.Error(
+                $"Game type catalog failed for scene '{sceneName}'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private string WriteGameTypeCatalog(
+        string sceneName,
+        IReadOnlyList<DCMLGameTypeInfo> allTypes,
+        IReadOnlyList<GameTypeKeywordResult> keywordResults)
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException(
+                "The module context is unavailable.");
+        }
+
+        Directory.CreateDirectory(
+            _context.DataDirectory);
+
+        string safeSceneName =
+            MakeSafeFileName(
+                string.IsNullOrWhiteSpace(
+                    sceneName)
+                    ? "unnamed-scene"
+                    : sceneName);
+
+        string path =
+            Path.Combine(
+                _context.DataDirectory,
+                "DCML.GameTypeCatalog." +
+                safeSceneName +
+                ".log");
+
+        var lines =
+            new List<string>();
+
+        lines.Add(
+            "DCML Loaded Game Type Catalog");
+
+        lines.Add(
+            $"UTC: {DateTime.UtcNow:O}");
+
+        lines.Add(
+            $"Scene: {sceneName}");
+
+        lines.Add(
+            $"Il2CppTypeCount: {allTypes.Count}");
+
+        lines.Add(
+            $"AtResultLimit: {allTypes.Count == DCMLGameTypeQuery.MaximumMaxResults}");
+
+        lines.Add(
+            $"ResultLimit: {DCMLGameTypeQuery.MaximumMaxResults}");
+
+        lines.Add(
+            $"KeywordCount: {keywordResults.Count}");
+
+        lines.Add(
+            string.Empty);
+
+        lines.Add(
+            "Keyword matches");
+
+        foreach (
+            GameTypeKeywordResult result in
+            keywordResults)
+        {
+            lines.Add(
+                $"[{result.Keyword}] Count={result.Types.Count}");
+
+            foreach (
+                DCMLGameTypeInfo type in
+                result.Types)
+            {
+                lines.Add(
+                    FormatGameType(
+                        type));
+            }
+
+            lines.Add(
+                string.Empty);
+        }
+
+        lines.Add(
+            "All loaded Il2Cpp types");
+
+        foreach (
+            DCMLGameTypeInfo type in
+            allTypes)
+        {
+            lines.Add(
+                FormatGameType(
+                    type));
+        }
+
+        lines.Add(
+            string.Empty);
+
+        File.WriteAllLines(
+            path,
+            lines);
+
+        return
+            path;
+    }
+
+    private static string FormatGameType(
+        DCMLGameTypeInfo type)
+    {
+        return
+            type.FullName +
+            " | Assembly=" +
+            type.AssemblyName +
+            " | Kind=" +
+            type.Kind +
+            " | Abstract=" +
+            type.IsAbstract +
+            " | Base=" +
+            (
+                type.BaseTypeFullName.Length == 0
+                    ? "none"
+                    : type.BaseTypeFullName
+            ) +
+            " | Interfaces=" +
+            (
+                type.InterfaceFullNames.Count == 0
+                    ? "none"
+                    : string.Join(
+                        ",",
+                        type.InterfaceFullNames)
+            );
+    }
+
     private void EnsureInitialized()
     {
         if (_context is null)
@@ -837,6 +1300,12 @@ public sealed class TestModule : IDCMLModule
         {
             throw new InvalidOperationException(
                 "The game object discovery service is unavailable.");
+        }
+
+        if (_gameTypeCatalog is null)
+        {
+            throw new InvalidOperationException(
+                "The game type catalog service is unavailable.");
         }
 
         if (_dataCenterApi is null)
@@ -941,6 +1410,16 @@ public sealed class TestModule : IDCMLModule
                 $"LastRecommendedError: {_lastRecommendedError}",
                 $"LastRecommendedSample: {_lastRecommendedSample}");
 
+        var targetedSemanticLines =
+            string.Join(
+                Environment.NewLine,
+                $"TargetedSemanticRuns: {_targetedSemanticRuns}",
+                $"LastTargetedSemanticScene: {_lastTargetedSemanticScene}",
+                $"LastTargetedSemanticCounts: {_lastTargetedSemanticCounts}",
+                $"LastTargetedSemanticAtLimit: {_lastTargetedSemanticAtLimit}",
+                $"LastTargetedSemanticError: {_lastTargetedSemanticError}",
+                $"LastTargetedSemanticSample: {_lastTargetedSemanticSample}");
+
         var componentInventoryLines =
             string.Join(
                 Environment.NewLine,
@@ -956,6 +1435,18 @@ public sealed class TestModule : IDCMLModule
                 $"LastComponentInventoryError: {_lastComponentInventoryError}",
                 $"LastComponentInventoryIl2CppSample: {_lastComponentInventoryIl2CppSample}");
 
+        var gameTypeCatalogLines =
+            string.Join(
+                Environment.NewLine,
+                $"GameTypeCatalogRuns: {_gameTypeCatalogRuns}",
+                $"LastGameTypeCatalogTypeCount: {_lastGameTypeCatalogTypeCount}",
+                $"LastGameTypeCatalogAtResultLimit: {_lastGameTypeCatalogAtResultLimit}",
+                $"LastGameTypeCatalogScene: {_lastGameTypeCatalogScene}",
+                $"LastGameTypeCatalogPath: {_lastGameTypeCatalogPath}",
+                $"LastGameTypeCatalogKeywordCounts: {_lastGameTypeCatalogKeywordCounts}",
+                $"LastGameTypeCatalogError: {_lastGameTypeCatalogError}",
+                $"LastGameTypeCatalogSample: {_lastGameTypeCatalogSample}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -969,7 +1460,9 @@ public sealed class TestModule : IDCMLModule
                 gameLines,
                 discoveryLines,
                 recommendedApiLines,
+                targetedSemanticLines,
                 componentInventoryLines,
+                gameTypeCatalogLines,
                 string.Empty,
                 string.Empty);
 
@@ -990,6 +1483,24 @@ public sealed class TestModule : IDCMLModule
             $"{_lastSceneEvent.BuildIndex}|" +
             $"{_lastSceneEvent.SceneName}|" +
             $"{_lastSceneEvent.Sequence}";
+    }
+
+    private sealed class GameTypeKeywordResult
+    {
+        public GameTypeKeywordResult(
+            string keyword,
+            IReadOnlyList<DCMLGameTypeInfo> types)
+        {
+            Keyword =
+                keyword;
+
+            Types =
+                types;
+        }
+
+        public string Keyword { get; }
+
+        public IReadOnlyList<DCMLGameTypeInfo> Types { get; }
     }
 
     private sealed class ProbeEvent
