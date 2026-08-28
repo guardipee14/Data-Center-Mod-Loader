@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AssemblyName>DCML.TestModule</AssemblyName>
     <RootNamespace>DCML.TestModule</RootNamespace>
