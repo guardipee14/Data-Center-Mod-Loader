@@ -14,13 +14,21 @@ public sealed class DataCenterComponentCatalogQuery
     public const int MaximumMaxExamplesPerType =
         64;
 
+    public const int DefaultMaxPages =
+        16;
+
+    public const int MaximumMaxPages =
+        256;
+
     public DataCenterComponentCatalogQuery(
         string? sceneName = null,
         string? typeNamePrefix = null,
         bool includeInactive = true,
         int maxObjects = DefaultMaxObjects,
         int maxExamplesPerType =
-            DefaultMaxExamplesPerType)
+            DefaultMaxExamplesPerType,
+        bool scanAllPages = false,
+        int maxPages = DefaultMaxPages)
     {
         if (
             maxObjects <= 0 ||
@@ -46,6 +54,18 @@ public sealed class DataCenterComponentCatalogQuery
                 $"Max examples per type must be between 1 and {MaximumMaxExamplesPerType}.");
         }
 
+        if (
+            maxPages <= 0 ||
+            maxPages >
+                MaximumMaxPages
+        )
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxPages),
+                maxPages,
+                $"Max pages must be between 1 and {MaximumMaxPages}.");
+        }
+
         SceneName =
             Normalize(
                 sceneName);
@@ -62,6 +82,12 @@ public sealed class DataCenterComponentCatalogQuery
 
         MaxExamplesPerType =
             maxExamplesPerType;
+
+        ScanAllPages =
+            scanAllPages;
+
+        MaxPages =
+            maxPages;
     }
 
     public string SceneName { get; }
@@ -73,6 +99,10 @@ public sealed class DataCenterComponentCatalogQuery
     public int MaxObjects { get; }
 
     public int MaxExamplesPerType { get; }
+
+    public bool ScanAllPages { get; }
+
+    public int MaxPages { get; }
 
     private static string Normalize(
         string? value)

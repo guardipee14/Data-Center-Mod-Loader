@@ -12,12 +12,20 @@ public sealed class DataCenterComponentCatalogSnapshot
     public DataCenterComponentCatalogSnapshot(
         string? sceneName,
         int scannedObjectCount,
-        IEnumerable<DataCenterComponentTypeInfo>? componentTypes)
+        IEnumerable<DataCenterComponentTypeInfo>? componentTypes,
+        int pagesScanned = 1,
+        bool isComplete = true)
     {
         if (scannedObjectCount < 0)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(scannedObjectCount));
+        }
+
+        if (pagesScanned <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(pagesScanned));
         }
 
         SceneName =
@@ -26,6 +34,12 @@ public sealed class DataCenterComponentCatalogSnapshot
 
         ScannedObjectCount =
             scannedObjectCount;
+
+        PagesScanned =
+            pagesScanned;
+
+        IsComplete =
+            isComplete;
 
         _componentTypes =
             componentTypes is null
@@ -54,6 +68,10 @@ public sealed class DataCenterComponentCatalogSnapshot
     public string SceneName { get; }
 
     public int ScannedObjectCount { get; }
+
+    public int PagesScanned { get; }
+
+    public bool IsComplete { get; }
 
     public IReadOnlyList<DataCenterComponentTypeInfo> ComponentTypes =>
         _componentTypes;

@@ -89,6 +89,10 @@ public sealed class TestModule : IDCMLModule
     private string _lastComponentInventoryIl2CppSample =
         string.Empty;
 
+    private int _lastComponentInventoryPagesScanned;
+
+    private bool _lastComponentInventoryComplete;
+
     public string Id =>
         "dcml.test.lifecycle";
 
@@ -547,7 +551,11 @@ public sealed class TestModule : IDCMLModule
                         maxObjects:
                             DataCenterComponentCatalogQuery.DefaultMaxObjects,
                         maxExamplesPerType:
-                            DataCenterComponentCatalogQuery.DefaultMaxExamplesPerType));
+                            DataCenterComponentCatalogQuery.DefaultMaxExamplesPerType,
+                        scanAllPages:
+                            true,
+                        maxPages:
+                            DataCenterComponentCatalogQuery.DefaultMaxPages));
 
             _componentInventoryRuns++;
             _lastComponentInventoryObjectCount =
@@ -560,6 +568,10 @@ public sealed class TestModule : IDCMLModule
                 snapshot.UnityEngineTypeCount;
             _lastComponentInventoryScene =
                 sceneName;
+            _lastComponentInventoryPagesScanned =
+                snapshot.PagesScanned;
+            _lastComponentInventoryComplete =
+                snapshot.IsComplete;
             _lastComponentInventoryError =
                 string.Empty;
 
@@ -609,6 +621,10 @@ public sealed class TestModule : IDCMLModule
                 0;
             _lastComponentInventoryScene =
                 sceneName;
+            _lastComponentInventoryPagesScanned =
+                0;
+            _lastComponentInventoryComplete =
+                false;
             _lastComponentInventoryPath =
                 string.Empty;
             _lastComponentInventoryIl2CppSample =
@@ -687,6 +703,8 @@ public sealed class TestModule : IDCMLModule
                 $"UTC: {DateTime.UtcNow:O}",
                 $"Scene: {snapshot.SceneName}",
                 $"ScannedObjectCount: {snapshot.ScannedObjectCount}",
+                $"PagesScanned: {snapshot.PagesScanned}",
+                $"IsComplete: {snapshot.IsComplete}",
                 $"UniqueComponentTypeCount: {snapshot.UniqueComponentTypeCount}",
                 $"Il2CppTypeCount: {snapshot.Il2CppTypeCount}",
                 $"UnityEngineTypeCount: {snapshot.UnityEngineTypeCount}",
@@ -932,6 +950,8 @@ public sealed class TestModule : IDCMLModule
                 $"LastComponentInventoryIl2CppTypeCount: {_lastComponentInventoryIl2CppTypeCount}",
                 $"LastComponentInventoryUnityTypeCount: {_lastComponentInventoryUnityTypeCount}",
                 $"LastComponentInventoryScene: {_lastComponentInventoryScene}",
+                $"LastComponentInventoryPagesScanned: {_lastComponentInventoryPagesScanned}",
+                $"LastComponentInventoryComplete: {_lastComponentInventoryComplete}",
                 $"LastComponentInventoryPath: {_lastComponentInventoryPath}",
                 $"LastComponentInventoryError: {_lastComponentInventoryError}",
                 $"LastComponentInventoryIl2CppSample: {_lastComponentInventoryIl2CppSample}");

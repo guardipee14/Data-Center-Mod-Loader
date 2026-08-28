@@ -123,6 +123,8 @@ internal sealed class MelonGameObjectDiscovery :
                 .ThenBy(
                     value =>
                         value.InstanceId)
+                .Skip(
+                    query.SkipResults)
                 .Take(
                     query.MaxResults)
                 .ToArray();

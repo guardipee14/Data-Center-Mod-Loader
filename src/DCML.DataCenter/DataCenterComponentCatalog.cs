@@ -32,60 +32,108 @@ public sealed class DataCenterComponentCatalog :
                 nameof(query));
         }
 
-        IReadOnlyList<DCMLGameObjectInfo> objects =
-            _gameObjectDiscovery.Find(
-                new DCMLGameObjectQuery(
-                    sceneName:
-                        query.SceneName,
-                    includeInactive:
-                        query.IncludeInactive,
-                    maxResults:
-                        query.MaxObjects,
-                    componentTypeNamePrefix:
-                        query.TypeNamePrefix));
-
         var accumulators =
             new Dictionary<string, ComponentAccumulator>(
                 StringComparer.Ordinal);
 
-        foreach (
-            DCMLGameObjectInfo gameObject in
-            objects)
+        int scannedObjectCount =
+            0;
+
+        int pagesScanned =
+            0;
+
+        bool isComplete =
+            false;
+
+        int pageLimit =
+            query.ScanAllPages
+                ? query.MaxPages
+                : 1;
+
+        for (
+            int pageIndex = 0;
+            pageIndex < pageLimit;
+            pageIndex++
+        )
         {
+            int skipResults =
+                checked(
+                    pageIndex *
+                    query.MaxObjects);
+
+            IReadOnlyList<DCMLGameObjectInfo> objects =
+                _gameObjectDiscovery.Find(
+                    new DCMLGameObjectQuery(
+                        sceneName:
+                            query.SceneName,
+                        includeInactive:
+                            query.IncludeInactive,
+                        maxResults:
+                            query.MaxObjects,
+                        componentTypeNamePrefix:
+                            query.TypeNamePrefix,
+                        skipResults:
+                            skipResults));
+
+            pagesScanned++;
+            scannedObjectCount +=
+                objects.Count;
+
             foreach (
-                string componentTypeName in
-                gameObject.ComponentTypeNames
-                    .Distinct(
-                        StringComparer.Ordinal))
+                DCMLGameObjectInfo gameObject in
+                objects)
             {
-                if (
-                    query.TypeNamePrefix.Length > 0 &&
-                    !componentTypeName.StartsWith(
-                        query.TypeNamePrefix,
-                        StringComparison.OrdinalIgnoreCase)
-                )
+                foreach (
+                    string componentTypeName in
+                    gameObject.ComponentTypeNames
+                        .Distinct(
+                            StringComparer.Ordinal))
                 {
-                    continue;
+                    if (
+                        query.TypeNamePrefix.Length > 0 &&
+                        !componentTypeName.StartsWith(
+                            query.TypeNamePrefix,
+                            StringComparison.OrdinalIgnoreCase)
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (
+                        !accumulators.TryGetValue(
+                            componentTypeName,
+                            out ComponentAccumulator? accumulator)
+                    )
+                    {
+                        accumulator =
+                            new ComponentAccumulator(
+                                componentTypeName);
+
+                        accumulators.Add(
+                            componentTypeName,
+                            accumulator);
+                    }
+
+                    accumulator.Add(
+                        gameObject,
+                        query.MaxExamplesPerType);
                 }
+            }
 
-                if (
-                    !accumulators.TryGetValue(
-                        componentTypeName,
-                        out ComponentAccumulator? accumulator)
-                )
-                {
-                    accumulator =
-                        new ComponentAccumulator(
-                            componentTypeName);
+            if (
+                objects.Count <
+                query.MaxObjects
+            )
+            {
+                isComplete =
+                    true;
 
-                    accumulators.Add(
-                        componentTypeName,
-                        accumulator);
-                }
+                break;
+            }
 
-                accumulator.Add(
-                    gameObject,
-                    query.MaxExamplesPerType);
+            if (!query.ScanAllPages)
+            {
+                break;
             }
         }
 
@@ -104,8 +152,10 @@ public sealed class DataCenterComponentCatalog :
         return
             new DataCenterComponentCatalogSnapshot(
                 query.SceneName,
-                objects.Count,
-                componentTypes);
+                scannedObjectCount,
+                componentTypes,
+                pagesScanned,
+                isComplete);
     }
 
     private sealed class ComponentAccumulator
