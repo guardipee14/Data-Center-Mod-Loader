@@ -132,21 +132,7 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 GetMelonLoaderVersion(),
                 "Data Center",
                 normalizedGameRoot,
-                new[]
-                {
-                    V1(DCMLRuntimeCapabilities.Logging),
-                    V1(DCMLRuntimeCapabilities.RuntimeInformation),
-                    V1(DCMLRuntimeCapabilities.RuntimeCapabilities),
-                    V1(DCMLRuntimeCapabilities.Configuration),
-                    V1(DCMLRuntimeCapabilities.Events),
-                    V1(DCMLRuntimeCapabilities.GameSceneLifecycle),
-                    V1(DCMLRuntimeCapabilities.GameObjectDiscovery),
-                    V1(DCMLRuntimeCapabilities.GameTypeCatalog),
-                    V1(DCMLRuntimeCapabilities.GameResourceDiscovery),
-                    V1(DCMLRuntimeCapabilities.GameTypeInspection),
-                    V1(DCMLRuntimeCapabilities.GameMainThread),
-                    V1(DCMLRuntimeCapabilities.GameComponentState)
-                });
+                MelonHostCapabilities.Create());
 
         Services =
             new DCMLServiceProvider(
@@ -205,15 +191,6 @@ public sealed class MelonModuleContext : IDCMLModuleContext
     public string DataDirectory { get; }
 
     public IServiceProvider Services { get; }
-
-    private static DCMLCapabilityDescriptor V1(
-        string capability)
-    {
-        return
-            new DCMLCapabilityDescriptor(
-                capability,
-                DCMLCapabilityVersions.V1);
-    }
 
     private static string GetMelonLoaderVersion()
     {

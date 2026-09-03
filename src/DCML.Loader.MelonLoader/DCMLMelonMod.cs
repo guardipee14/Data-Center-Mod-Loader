@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using DCML.Core;
 using DCML.Core.Models;
 using DCML.Core.Runtime;
 using DCML.Core.Services;
@@ -169,9 +170,28 @@ namespace DCML.Loader.MelonLoader
                 }
             }
 
+            DCMLPackageCompatibilityResult compatibility =
+                DCMLPackageCompatibilityEvaluator.Evaluate(
+                    discovery.Packages,
+                    DCMLVersion.Current,
+                    MelonHostCapabilities.Create());
+
+            foreach (
+                DCMLPackageCompatibilityIssue issue
+                in compatibility.Issues)
+            {
+                LoggerInstance.Warning(
+                    "[DCML] Compatibility " +
+                    issue.Code +
+                    " [" +
+                    issue.ModuleId +
+                    "] " +
+                    issue.Message);
+            }
+
             DCMLDependencyResolutionResult resolution =
                 DCMLDependencyResolver.Resolve(
-                    discovery.Packages);
+                    compatibility.CompatiblePackages);
 
             foreach (DCMLDependencyResolutionIssue issue in resolution.Issues)
             {
@@ -260,6 +280,8 @@ namespace DCML.Loader.MelonLoader
                 " valid package(s), " +
                 discovery.Failures.Count +
                 " discovery failure(s), " +
+                compatibility.IncompatiblePackageCount +
+                " incompatible package(s), " +
                 runningCount +
                 " running module(s).");
         }

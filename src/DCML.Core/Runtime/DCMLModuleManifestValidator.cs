@@ -53,6 +53,11 @@ namespace DCML.Core.Runtime
                 result
             );
 
+            ValidateRequiredCapabilities(
+                manifest,
+                result
+            );
+
             ValidateDependencies(
                 manifest,
                 result
@@ -248,6 +253,88 @@ namespace DCML.Core.Runtime
                     );
 
                     break;
+                }
+            }
+        }
+
+        private static void ValidateRequiredCapabilities(
+            DCMLModuleManifest manifest,
+            DCMLValidationResult result
+        )
+        {
+            if (manifest.RequiredCapabilities == null)
+            {
+                result.Add(
+                    "DCML_MANIFEST_REQUIRED_CAPABILITIES_INVALID",
+                    "RequiredCapabilities may not be null."
+                );
+
+                return;
+            }
+
+            var capabilityIds =
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+            foreach (
+                DCMLCapabilityRequirement requirement
+                in manifest.RequiredCapabilities
+            )
+            {
+                if (requirement == null)
+                {
+                    result.Add(
+                        "DCML_MANIFEST_REQUIRED_CAPABILITY_INVALID",
+                        "A required capability entry may not be null."
+                    );
+
+                    continue;
+                }
+
+                if (
+                    string.IsNullOrWhiteSpace(
+                        requirement.Id
+                    )
+                )
+                {
+                    result.Add(
+                        "DCML_MANIFEST_REQUIRED_CAPABILITY_ID_REQUIRED",
+                        "Every required capability must declare an Id."
+                    );
+
+                    continue;
+                }
+
+                if (
+                    !string.IsNullOrWhiteSpace(
+                        requirement.MinimumVersion
+                    ) &&
+                    !DCMLSemanticVersion.IsValid(
+                        requirement.MinimumVersion
+                    )
+                )
+                {
+                    result.Add(
+                        "DCML_MANIFEST_REQUIRED_CAPABILITY_VERSION_INVALID",
+                        "Required capability '" +
+                        requirement.Id +
+                        "' has an invalid MinimumVersion."
+                    );
+                }
+
+                if (
+                    !capabilityIds.Add(
+                        requirement.Id
+                    )
+                )
+                {
+                    result.Add(
+                        "DCML_MANIFEST_DUPLICATE_REQUIRED_CAPABILITY",
+                        "Required capability '" +
+                        requirement.Id +
+                        "' is declared more than once."
+                    );
                 }
             }
         }

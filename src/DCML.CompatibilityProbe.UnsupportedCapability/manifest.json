@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.compatibility-unsupported",
+  "name": "DCML Unsupported Capability Compatibility Probe",
+  "version": "1.0.0",
+  "description": "Must be rejected before activation because it requires a capability the current Melon host does not advertise.",
+  "author": "DCML",
+  "entryAssembly": "DCML.CompatibilityProbe.UnsupportedCapability.dll",
+  "entryType": "DCML.CompatibilityProbe.UnsupportedCapability.UnsupportedCapabilityModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiredCapabilities": [
+    {
+      "id": "dcml.probe.unsupported-capability",
+      "minimumVersion": "1.0.0"
+    }
+  ],
+  "requiresRestart": false,
+  "dependencies": []
+}

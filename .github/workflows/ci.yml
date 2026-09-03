@@ -66,6 +66,12 @@ jobs:
       - name: Build optional consumer probe
         run: dotnet build src/DCML.OptionalProbe.Consumer/DCML.OptionalProbe.Consumer.csproj --configuration Release --no-restore
 
+      - name: Restore compatibility rejection probe
+        run: dotnet restore src/DCML.CompatibilityProbe.UnsupportedCapability/DCML.CompatibilityProbe.UnsupportedCapability.csproj
+
+      - name: Build compatibility rejection probe
+        run: dotnet build src/DCML.CompatibilityProbe.UnsupportedCapability/DCML.CompatibilityProbe.UnsupportedCapability.csproj --configuration Release --no-restore
+
       - name: Restore persistence helper
         run: dotnet restore src/DCML.Persistence.Helper/DCML.Persistence.Helper.csproj
 

@@ -187,24 +187,39 @@ public sealed class DCMLVersionedCapabilityTests
                     "..",
                     ".."));
 
-        string path =
+        string contextPath =
             Path.Combine(
                 root,
                 "src",
                 "DCML.Loader.MelonLoader",
                 "MelonModuleContext.cs");
 
-        string source =
+        string hostCapabilitiesPath =
+            Path.Combine(
+                root,
+                "src",
+                "DCML.Loader.MelonLoader",
+                "MelonHostCapabilities.cs");
+
+        string contextSource =
             File.ReadAllText(
-                path);
+                contextPath);
+
+        string hostCapabilitiesSource =
+            File.ReadAllText(
+                hostCapabilitiesPath);
 
         Assert.Contains(
             "typeof(IDCMLCapabilityCatalog)",
-            source);
+            contextSource);
+
+        Assert.Contains(
+            "MelonHostCapabilities.Create()",
+            contextSource);
 
         Assert.Contains(
             "DCMLRuntimeCapabilities.RuntimeCapabilities",
-            source);
+            hostCapabilitiesSource);
     }
 
     private static DCMLRuntimeInfo CreateLegacyRuntimeInfo()

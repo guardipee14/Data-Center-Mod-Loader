@@ -55,6 +55,13 @@ namespace DCML.Core.Models
         public string? MinimumDCMLVersion { get; set; }
 
         /// <summary>
+        /// Gets or sets the runtime capabilities that must be present
+        /// before this package may be activated.
+        /// </summary>
+        public IList<DCMLCapabilityRequirement> RequiredCapabilities { get; set; } =
+            new List<DCMLCapabilityRequirement>();
+
+        /// <summary>
         /// Gets or sets whether installing or updating this module
         /// requires the host application to restart.
         /// </summary>

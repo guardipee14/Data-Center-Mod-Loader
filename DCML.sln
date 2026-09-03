@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DCML.OptionalProbe.Provider
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DCML.OptionalProbe.Consumer", "src\DCML.OptionalProbe.Consumer\DCML.OptionalProbe.Consumer.csproj", "{07552637-10D4-47BB-A433-A245AF6DBCAE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DCML.CompatibilityProbe.UnsupportedCapability", "src\DCML.CompatibilityProbe.UnsupportedCapability\DCML.CompatibilityProbe.UnsupportedCapability.csproj", "{DB022C60-CABB-408C-8DAD-CD25457AA492}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,6 +78,10 @@ Global
 		{07552637-10D4-47BB-A433-A245AF6DBCAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07552637-10D4-47BB-A433-A245AF6DBCAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07552637-10D4-47BB-A433-A245AF6DBCAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB022C60-CABB-408C-8DAD-CD25457AA492}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB022C60-CABB-408C-8DAD-CD25457AA492}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB022C60-CABB-408C-8DAD-CD25457AA492}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB022C60-CABB-408C-8DAD-CD25457AA492}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1F3F780B-12B3-4F2E-9F6B-D7D11797FC64} = {DA5CC60B-AA35-4640-A1E7-EAA1DC99C95D}
@@ -88,5 +94,6 @@ Global
 		{AF8F683D-8C4B-441D-8C06-9C8D4BE3E8E8} = {DA5CC60B-AA35-4640-A1E7-EAA1DC99C95D}
 		{D6E87312-91C9-487C-9BBB-1036A6E1164B} = {DA5CC60B-AA35-4640-A1E7-EAA1DC99C95D}
 		{07552637-10D4-47BB-A433-A245AF6DBCAE} = {DA5CC60B-AA35-4640-A1E7-EAA1DC99C95D}
+		{DB022C60-CABB-408C-8DAD-CD25457AA492} = {DA5CC60B-AA35-4640-A1E7-EAA1DC99C95D}
 	EndGlobalSection
 EndGlobal
