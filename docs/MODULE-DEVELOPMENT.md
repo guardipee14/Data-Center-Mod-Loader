@@ -72,6 +72,39 @@ Current runtime-information fields include:
 - `GameRoot`
 - `Capabilities`
 
+The original string capability API remains supported.
+
+### Versioned capability checks
+
+Newer modules that require a particular API revision can request
+`IDCMLCapabilityCatalog`:
+
+```csharp
+var capabilities =
+    context.Services.GetService(typeof(IDCMLCapabilityCatalog))
+        as IDCMLCapabilityCatalog;
+
+if (capabilities?.SupportsCapability(
+        DCMLRuntimeCapabilities.Events,
+        "1.0.0") == true)
+{
+    // Event API 1.0.0 or newer is available.
+}
+```
+
+Capability versions are independent from the overall DCML release version.
+All capability contracts that existed before the versioned catalog begin at
+capability API version `1.0.0`.
+
+If a module only needs the original unversioned behavior, it may fall back to
+`IDCMLRuntimeInfo.HasCapability(...)` on older hosts. If it requires behavior
+from a newer capability API revision, absence of `IDCMLCapabilityCatalog`
+should be treated as unsupported.
+
+See
+[Versioned Runtime Capabilities](VERSIONED-RUNTIME-CAPABILITIES.md)
+for the compatibility and fallback rules.
+
 ## Configuration
 
 ```csharp
@@ -139,8 +172,12 @@ Dependencies may be required or optional and may declare minimum versions.
 
 ## Compatibility
 
-Modules should prefer DCML capabilities over direct host dependencies.
+Modules should prefer DCML capabilities over direct host dependencies when
+the DCML abstraction fits their needs.
 
-For example, use `IDCMLLogger` instead of calling `MelonLogger` directly.
+For example, `IDCMLLogger` can be used instead of calling `MelonLogger`
+directly. That allows the same module code to work through another host
+adapter in the future.
 
-This is what allows DCML to support another host in the future without forcing module authors to rewrite their modules.
+This is a recommendation, not a loader requirement. A compatible mod may use
+lower-level host, Unity, IL2CPP, or game APIs directly.

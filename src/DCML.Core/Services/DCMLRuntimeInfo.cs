@@ -1,14 +1,21 @@
 using System;
 using System.Collections.Generic;
 using DCML.Core.Abstractions;
+using DCML.Core.Runtime;
 
 namespace DCML.Core.Services;
 
-public sealed class DCMLRuntimeInfo : IDCMLRuntimeInfo
+public sealed class DCMLRuntimeInfo :
+    IDCMLRuntimeInfo,
+    IDCMLCapabilityCatalog
 {
     private readonly HashSet<string> _capabilitySet;
 
     private readonly IReadOnlyCollection<string> _capabilities;
+
+    private readonly IReadOnlyCollection<DCMLCapabilityDescriptor> _capabilityDescriptors;
+
+    private readonly Dictionary<string, DCMLCapabilityDescriptor> _capabilityMap;
 
     public DCMLRuntimeInfo(
         string moduleId,
@@ -18,6 +25,25 @@ public sealed class DCMLRuntimeInfo : IDCMLRuntimeInfo
         string gameName,
         string gameRoot,
         IEnumerable<string> capabilities)
+        : this(
+            moduleId,
+            dcmlVersion,
+            hostName,
+            hostVersion,
+            gameName,
+            gameRoot,
+            CreateVersionedCapabilities(capabilities))
+    {
+    }
+
+    public DCMLRuntimeInfo(
+        string moduleId,
+        string dcmlVersion,
+        string hostName,
+        string hostVersion,
+        string gameName,
+        string gameRoot,
+        IEnumerable<DCMLCapabilityDescriptor> capabilities)
     {
         ModuleId =
             RequireValue(
@@ -59,30 +85,63 @@ public sealed class DCMLRuntimeInfo : IDCMLRuntimeInfo
             new HashSet<string>(
                 StringComparer.OrdinalIgnoreCase);
 
+        _capabilityMap =
+            new Dictionary<string, DCMLCapabilityDescriptor>(
+                StringComparer.OrdinalIgnoreCase);
+
         var orderedCapabilities =
             new List<string>();
 
-        foreach (var capability in capabilities)
+        var orderedDescriptors =
+            new List<DCMLCapabilityDescriptor>();
+
+        foreach (var descriptor in capabilities)
         {
-            if (string.IsNullOrWhiteSpace(capability))
+            if (descriptor is null)
             {
                 throw new ArgumentException(
-                    "Runtime capabilities cannot contain an empty value.",
+                    "Runtime capabilities cannot contain a null descriptor.",
                     nameof(capabilities));
             }
 
-            var normalized =
-                capability.Trim();
-
-            if (_capabilitySet.Add(normalized))
+            if (
+                _capabilityMap.TryGetValue(
+                    descriptor.Id,
+                    out var existing))
             {
-                orderedCapabilities.Add(
-                    normalized);
+                if (
+                    !string.Equals(
+                        existing.Version,
+                        descriptor.Version,
+                        StringComparison.Ordinal))
+                {
+                    throw new ArgumentException(
+                        $"Capability '{descriptor.Id}' was registered with conflicting versions '{existing.Version}' and '{descriptor.Version}'.",
+                        nameof(capabilities));
+                }
+
+                continue;
             }
+
+            _capabilitySet.Add(
+                descriptor.Id);
+
+            _capabilityMap.Add(
+                descriptor.Id,
+                descriptor);
+
+            orderedCapabilities.Add(
+                descriptor.Id);
+
+            orderedDescriptors.Add(
+                descriptor);
         }
 
         _capabilities =
             orderedCapabilities.AsReadOnly();
+
+        _capabilityDescriptors =
+            orderedDescriptors.AsReadOnly();
     }
 
     public string ModuleId { get; }
@@ -100,6 +159,9 @@ public sealed class DCMLRuntimeInfo : IDCMLRuntimeInfo
     public IReadOnlyCollection<string> Capabilities =>
         _capabilities;
 
+    public IReadOnlyCollection<DCMLCapabilityDescriptor> CapabilityDescriptors =>
+        _capabilityDescriptors;
+
     public bool HasCapability(
         string capability)
     {
@@ -111,6 +173,88 @@ public sealed class DCMLRuntimeInfo : IDCMLRuntimeInfo
         return
             _capabilitySet.Contains(
                 capability.Trim());
+    }
+
+    public bool TryGetCapabilityVersion(
+        string capability,
+        out string? version)
+    {
+        version =
+            null;
+
+        if (string.IsNullOrWhiteSpace(capability))
+        {
+            return false;
+        }
+
+        if (
+            !_capabilityMap.TryGetValue(
+                capability.Trim(),
+                out var descriptor))
+        {
+            return false;
+        }
+
+        version =
+            descriptor.Version;
+
+        return true;
+    }
+
+    public bool SupportsCapability(
+        string capability,
+        string minimumVersion)
+    {
+        if (
+            !TryGetCapabilityVersion(
+                capability,
+                out string? availableVersion))
+        {
+            return false;
+        }
+
+        if (
+            !DCMLSemanticVersion.TryCompare(
+                availableVersion,
+                minimumVersion,
+                out int comparison))
+        {
+            return false;
+        }
+
+        return
+            comparison >= 0;
+    }
+
+    private static IReadOnlyCollection<DCMLCapabilityDescriptor> CreateVersionedCapabilities(
+        IEnumerable<string> capabilities)
+    {
+        if (capabilities is null)
+        {
+            throw new ArgumentNullException(
+                nameof(capabilities));
+        }
+
+        var descriptors =
+            new List<DCMLCapabilityDescriptor>();
+
+        foreach (string capability in capabilities)
+        {
+            if (string.IsNullOrWhiteSpace(capability))
+            {
+                throw new ArgumentException(
+                    "Runtime capabilities cannot contain an empty value.",
+                    nameof(capabilities));
+            }
+
+            descriptors.Add(
+                new DCMLCapabilityDescriptor(
+                    capability,
+                    DCMLCapabilityVersions.V1));
+        }
+
+        return
+            descriptors.AsReadOnly();
     }
 
     private static string RequireValue(

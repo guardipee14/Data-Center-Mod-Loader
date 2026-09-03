@@ -134,17 +134,18 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 normalizedGameRoot,
                 new[]
                 {
-                    DCMLRuntimeCapabilities.Logging,
-                    DCMLRuntimeCapabilities.RuntimeInformation,
-                    DCMLRuntimeCapabilities.Configuration,
-                    DCMLRuntimeCapabilities.Events,
-                    DCMLRuntimeCapabilities.GameSceneLifecycle,
-                    DCMLRuntimeCapabilities.GameObjectDiscovery,
-                    DCMLRuntimeCapabilities.GameTypeCatalog,
-                    DCMLRuntimeCapabilities.GameResourceDiscovery,
-                    DCMLRuntimeCapabilities.GameTypeInspection,
-                    DCMLRuntimeCapabilities.GameMainThread,
-                    DCMLRuntimeCapabilities.GameComponentState
+                    V1(DCMLRuntimeCapabilities.Logging),
+                    V1(DCMLRuntimeCapabilities.RuntimeInformation),
+                    V1(DCMLRuntimeCapabilities.RuntimeCapabilities),
+                    V1(DCMLRuntimeCapabilities.Configuration),
+                    V1(DCMLRuntimeCapabilities.Events),
+                    V1(DCMLRuntimeCapabilities.GameSceneLifecycle),
+                    V1(DCMLRuntimeCapabilities.GameObjectDiscovery),
+                    V1(DCMLRuntimeCapabilities.GameTypeCatalog),
+                    V1(DCMLRuntimeCapabilities.GameResourceDiscovery),
+                    V1(DCMLRuntimeCapabilities.GameTypeInspection),
+                    V1(DCMLRuntimeCapabilities.GameMainThread),
+                    V1(DCMLRuntimeCapabilities.GameComponentState)
                 });
 
         Services =
@@ -155,6 +156,10 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 ),
                 (
                     typeof(IDCMLRuntimeInfo),
+                    runtimeInfo
+                ),
+                (
+                    typeof(IDCMLCapabilityCatalog),
                     runtimeInfo
                 ),
                 (
@@ -200,6 +205,15 @@ public sealed class MelonModuleContext : IDCMLModuleContext
     public string DataDirectory { get; }
 
     public IServiceProvider Services { get; }
+
+    private static DCMLCapabilityDescriptor V1(
+        string capability)
+    {
+        return
+            new DCMLCapabilityDescriptor(
+                capability,
+                DCMLCapabilityVersions.V1);
+    }
 
     private static string GetMelonLoaderVersion()
     {

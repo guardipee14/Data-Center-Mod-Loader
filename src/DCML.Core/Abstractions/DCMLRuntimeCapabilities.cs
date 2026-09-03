@@ -8,6 +8,9 @@ public static class DCMLRuntimeCapabilities
     public const string RuntimeInformation =
         "dcml.runtime-information";
 
+    public const string RuntimeCapabilities =
+        "dcml.runtime-capabilities";
+
     public const string Configuration =
         "dcml.configuration";
 
