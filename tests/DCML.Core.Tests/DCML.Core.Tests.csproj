@@ -23,6 +23,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DCML.Core\DCML.Core.csproj" />
     <ProjectReference Include="..\..\src\DCML.DataCenter\DCML.DataCenter.csproj" />
+    <ProjectReference Include="..\..\src\DCML.MultiModuleProbe.Publisher\DCML.MultiModuleProbe.Publisher.csproj"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\DCML.MultiModuleProbe.Consumer\DCML.MultiModuleProbe.Consumer.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

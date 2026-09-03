@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.publisher",
+  "name": "DCML Multi-Module Publisher Probe",
+  "version": "1.0.0",
+  "description": "Publisher half of the DCML dependency-order and cross-module event integration probe.",
+  "author": "DCML",
+  "entryAssembly": "DCML.MultiModuleProbe.Publisher.dll",
+  "entryType": "DCML.MultiModuleProbe.Publisher.PublisherModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiresRestart": false,
+  "dependencies": []
+}

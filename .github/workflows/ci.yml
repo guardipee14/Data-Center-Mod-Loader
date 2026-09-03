@@ -42,6 +42,18 @@ jobs:
       - name: Build test module
         run: dotnet build src/DCML.TestModule/DCML.TestModule.csproj --configuration Release --no-restore
 
+      - name: Restore multi-module publisher probe
+        run: dotnet restore src/DCML.MultiModuleProbe.Publisher/DCML.MultiModuleProbe.Publisher.csproj
+
+      - name: Build multi-module publisher probe
+        run: dotnet build src/DCML.MultiModuleProbe.Publisher/DCML.MultiModuleProbe.Publisher.csproj --configuration Release --no-restore
+
+      - name: Restore multi-module consumer probe
+        run: dotnet restore src/DCML.MultiModuleProbe.Consumer/DCML.MultiModuleProbe.Consumer.csproj
+
+      - name: Build multi-module consumer probe
+        run: dotnet build src/DCML.MultiModuleProbe.Consumer/DCML.MultiModuleProbe.Consumer.csproj --configuration Release --no-restore
+
       - name: Restore persistence helper
         run: dotnet restore src/DCML.Persistence.Helper/DCML.Persistence.Helper.csproj
 

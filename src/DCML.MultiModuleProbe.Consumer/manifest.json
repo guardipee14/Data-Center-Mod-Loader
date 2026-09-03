@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.consumer",
+  "name": "DCML Multi-Module Consumer Probe",
+  "version": "1.0.0",
+  "description": "Consumer half of the DCML dependency-order and cross-module event integration probe.",
+  "author": "DCML",
+  "entryAssembly": "DCML.MultiModuleProbe.Consumer.dll",
+  "entryType": "DCML.MultiModuleProbe.Consumer.ConsumerModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiresRestart": false,
+  "dependencies": [
+    {
+      "id": "dcml.probe.publisher",
+      "minimumVersion": "1.0.0",
+      "optional": false
+    }
+  ]
+}

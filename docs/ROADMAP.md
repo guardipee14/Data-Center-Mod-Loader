@@ -86,7 +86,7 @@ compatibility.
 
 - [x] Define a versioned capability contract so mods can test both capability presence and API version
 - [x] Document capability compatibility rules and fallback behavior
-- [ ] Add a multi-module integration probe with dependency-safe startup and cross-module event delivery
+- [x] Add a multi-module integration probe with dependency-safe startup and cross-module event delivery
 - [ ] Add integration coverage for optional dependency present / absent behavior across real module packages
 - [ ] Add package-level compatibility diagnostics for unsupported DCML/API requirements
 - [ ] Keep loader acceptance independent from optional SDK/Data Center helper usage
