@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.optional-consumer",
+  "name": "DCML Optional Dependency Consumer Probe",
+  "version": "1.0.0",
+  "description": "Consumer used to validate present and absent optional-dependency package behavior.",
+  "author": "DCML",
+  "entryAssembly": "DCML.OptionalProbe.Consumer.dll",
+  "entryType": "DCML.OptionalProbe.Consumer.ConsumerModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiresRestart": false,
+  "dependencies": [
+    {
+      "id": "dcml.probe.optional-provider",
+      "minimumVersion": "1.0.0",
+      "optional": true
+    }
+  ]
+}

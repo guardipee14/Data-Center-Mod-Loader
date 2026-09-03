@@ -54,6 +54,18 @@ jobs:
       - name: Build multi-module consumer probe
         run: dotnet build src/DCML.MultiModuleProbe.Consumer/DCML.MultiModuleProbe.Consumer.csproj --configuration Release --no-restore
 
+      - name: Restore optional provider probe
+        run: dotnet restore src/DCML.OptionalProbe.Provider/DCML.OptionalProbe.Provider.csproj
+
+      - name: Build optional provider probe
+        run: dotnet build src/DCML.OptionalProbe.Provider/DCML.OptionalProbe.Provider.csproj --configuration Release --no-restore
+
+      - name: Restore optional consumer probe
+        run: dotnet restore src/DCML.OptionalProbe.Consumer/DCML.OptionalProbe.Consumer.csproj
+
+      - name: Build optional consumer probe
+        run: dotnet build src/DCML.OptionalProbe.Consumer/DCML.OptionalProbe.Consumer.csproj --configuration Release --no-restore
+
       - name: Restore persistence helper
         run: dotnet restore src/DCML.Persistence.Helper/DCML.Persistence.Helper.csproj
 

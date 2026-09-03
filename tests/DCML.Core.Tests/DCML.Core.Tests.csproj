@@ -27,6 +27,10 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\DCML.MultiModuleProbe.Consumer\DCML.MultiModuleProbe.Consumer.csproj"
                       ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\DCML.OptionalProbe.Provider\DCML.OptionalProbe.Provider.csproj"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\DCML.OptionalProbe.Consumer\DCML.OptionalProbe.Consumer.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

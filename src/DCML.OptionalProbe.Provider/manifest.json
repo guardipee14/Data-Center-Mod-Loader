@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.optional-provider",
+  "name": "DCML Optional Dependency Provider Probe",
+  "version": "1.0.0",
+  "description": "Optional provider used to validate present and absent optional-dependency package behavior.",
+  "author": "DCML",
+  "entryAssembly": "DCML.OptionalProbe.Provider.dll",
+  "entryType": "DCML.OptionalProbe.Provider.ProviderModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiresRestart": false,
+  "dependencies": []
+}
