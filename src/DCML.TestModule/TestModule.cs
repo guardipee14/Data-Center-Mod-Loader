@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using DCML.Core.Abstractions;
 using DCML.Core.Models;
 using DCML.DataCenter;
@@ -30,6 +31,31 @@ public sealed class TestModule : IDCMLModule
         "Packet"
     };
 
+    private static readonly string[] InspectedGameTypeNames =
+    {
+        "Il2Cpp.Server",
+        "Il2Cpp.Rack",
+        "Il2Cpp.NetworkSwitch",
+        "Il2Cpp.Router",
+        "Il2Cpp.Firewall",
+        "Il2Cpp.SFPModule",
+        "Il2Cpp.CableLink",
+        "Il2Cpp.CustomerBase",
+        "Il2Cpp.CustomerItem",
+        "Il2Cpp.CustomerBaseSaveData",
+        "Il2Cpp.INetworkEndpoint",
+        "Il2Cpp.ITimedDevice"
+    };
+
+    private const int DefaultAutomaticSceneDiagnosticDelayFrames =
+        600;
+
+    private const int SafeAutomaticSceneDiagnosticStageCount =
+        3;
+
+    private const int HeavyAutomaticSceneDiagnosticStageCount =
+        8;
+
     private IDCMLModuleContext? _context;
 
     private IDCMLLogger? _logger;
@@ -46,6 +72,14 @@ public sealed class TestModule : IDCMLModule
 
     private IDCMLGameTypeCatalog? _gameTypeCatalog;
 
+    private IDCMLGameResourceDiscovery? _gameResourceDiscovery;
+
+    private IDCMLGameTypeInspector? _gameTypeInspector;
+
+    private IDCMLGameThread? _gameThread;
+
+    private IDCMLGameComponentStateReader? _gameComponentStateReader;
+
     private DataCenterApi? _dataCenterApi;
 
     private IDisposable? _probeSubscription;
@@ -53,6 +87,26 @@ public sealed class TestModule : IDCMLModule
     private IDisposable? _sceneSubscription;
 
     private ProbeSettings? _settings;
+
+    private int _automaticSceneDiagnosticGeneration;
+
+    private bool _automaticSceneDiagnosticPending;
+
+    private int _automaticSceneDiagnosticFramesRemaining;
+
+    private int _automaticSceneDiagnosticStage;
+
+    private int _automaticSceneDiagnosticSchedules;
+
+    private int _automaticSceneDiagnosticCompletions;
+
+    private int _automaticSceneDiagnosticCancellations;
+
+    private string _automaticSceneDiagnosticScene =
+        string.Empty;
+
+    private string _automaticSceneDiagnosticLastError =
+        string.Empty;
 
     private int _eventsReceived;
 
@@ -153,6 +207,211 @@ public sealed class TestModule : IDCMLModule
     private string _lastGameTypeCatalogSample =
         string.Empty;
 
+    private int _gameResourceDiscoveryRuns;
+
+    private string _lastGameResourceDiscoveryScene =
+        string.Empty;
+
+    private int _lastGameResourceDiscoveryServerCount;
+
+    private int _lastGameResourceDiscoveryRackCount;
+
+    private int _lastGameResourceDiscoveryNetworkDeviceCount;
+
+    private int _lastGameResourceDiscoveryCableCount;
+
+    private string _lastGameResourceDiscoveryError =
+        string.Empty;
+
+    private string _lastGameResourceDiscoverySample =
+        string.Empty;
+
+    private int _gameTypeInspectionRuns;
+
+    private string _lastGameTypeInspectionScene =
+        string.Empty;
+
+    private int _lastGameTypeInspectionTypeCount;
+
+    private int _lastGameTypeInspectionMemberCount;
+
+    private string _lastGameTypeInspectionAtLimit =
+        string.Empty;
+
+    private string _lastGameTypeInspectionPath =
+        string.Empty;
+
+    private string _lastGameTypeInspectionError =
+        string.Empty;
+
+    private string _lastGameTypeInspectionSummary =
+        string.Empty;
+
+    private int _gameThreadProbeRuns;
+
+    private bool _lastGameThreadInitializeWasMainThread;
+
+    private bool _lastGameThreadBackgroundWasMainThread;
+
+    private bool _lastGameThreadPostWasMainThread;
+
+    private bool _lastGameThreadInvokeWasMainThread;
+
+    private int _lastGameThreadPostCount;
+
+    private int _lastGameThreadInvokeCount;
+
+    private string _lastGameThreadError =
+        string.Empty;
+
+    private int _hardwareSnapshotRuns;
+
+    private string _lastHardwareSnapshotScene =
+        string.Empty;
+
+    private int _lastHardwareSnapshotServerCount;
+
+    private int _lastHardwareSnapshotRackCount;
+
+    private int _lastHardwareSnapshotNetworkDeviceCount;
+
+    private int _lastHardwareSnapshotSfpCount;
+
+    private int _lastHardwareSnapshotCableCount;
+
+    private int _lastHardwareSnapshotServerDefinitionCount;
+    private int _lastHardwareSnapshotServerInstanceCount;
+    private int _lastHardwareSnapshotRackDefinitionCount;
+    private int _lastHardwareSnapshotRackInstanceCount;
+    private int _lastHardwareSnapshotNetworkDeviceDefinitionCount;
+    private int _lastHardwareSnapshotNetworkDeviceInstanceCount;
+    private int _lastHardwareSnapshotSfpDefinitionCount;
+    private int _lastHardwareSnapshotSfpInstanceCount;
+    private int _lastHardwareSnapshotCableDefinitionCount;
+    private int _lastHardwareSnapshotCableInstanceCount;
+
+    private int _lastHardwareSnapshotSfpLinkedCount;
+    private int _lastHardwareSnapshotCableParentServerCount;
+    private int _lastHardwareSnapshotCableParentSwitchCount;
+    private int _lastHardwareSnapshotCableParentPatchPanelCount;
+    private int _lastHardwareSnapshotCableParentInternetCount;
+    private int _lastHardwareSnapshotCableInsertedSfpCount;
+
+    private string _lastHardwareRelationshipSample =
+        string.Empty;
+
+    private int _lastHardwareTopologyNodeCount;
+    private int _lastHardwareTopologyEdgeCount;
+    private int _lastHardwareTopologyResolvedEdgeCount;
+    private int _lastHardwareTopologyUnresolvedEdgeCount;
+    private int _lastHardwareTopologyCableSearchPages;
+    private int _lastHardwareTopologyCableCandidatesScanned;
+    private bool _lastHardwareTopologyCableSearchExhausted;
+    private int _lastHardwareTopologyNonSceneSearchPages;
+    private int _lastHardwareTopologyNonSceneCandidatesScanned;
+    private int _lastHardwareTopologyNonSceneTargetMatchCount;
+    private bool _lastHardwareTopologyNonSceneSearchExhausted;
+    private int _lastHardwareTopologyTargetCableDetailRequestedCount;
+    private int _lastHardwareTopologyTargetCableDetailFoundCount;
+    private int _lastHardwareTopologyTargetCableParentServerCount;
+    private int _lastHardwareTopologyTargetCableParentSwitchCount;
+    private int _lastHardwareTopologyTargetCableParentPatchPanelCount;
+    private int _lastHardwareTopologyTargetCableParentInternetCount;
+    private int _lastHardwareTopologyTargetCableInsertedSfpCount;
+    private int _lastHardwareTopologyTargetCableSfpPortCount;
+    private int _lastHardwareTopologyTargetCableEndpointCount;
+
+    private int _lastHardwareTopologyTargetHierarchyTargetCount;
+    private int _lastHardwareTopologyTargetHierarchyMatchedTargetCount;
+    private int _lastHardwareTopologyTargetHierarchyObjectCount;
+    private int _lastHardwareTopologyTargetHierarchyServerAncestorCount;
+    private int _lastHardwareTopologyTargetHierarchyNetworkDeviceAncestorCount;
+    private int _lastHardwareTopologyTargetHierarchyPatchPanelAncestorCount;
+    private int _lastHardwareTopologyTargetHierarchyInternetAncestorCount;
+    private int _lastHardwareTopologyTargetHierarchyRackAncestorCount;
+
+    private string _lastHardwareTopologyTargetHierarchySample =
+        string.Empty;
+
+    private string _lastHardwareTopologyTargetHierarchyError =
+        string.Empty;
+
+    private int _lastHardwareTopologyCustomerBaseRootCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeObjectCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeIl2CppTypeCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeNetworkSwitchCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeRouterCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeFirewallCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeServerCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreePatchPanelCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeInternetCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeRackCount;
+    private int _lastHardwareTopologyCustomerBaseSubtreeCableLinkCount;
+    private bool _lastHardwareTopologyCustomerBaseSubtreeAtResultLimit;
+
+    private string _lastHardwareTopologyCustomerBaseSubtreeTypes =
+        string.Empty;
+
+    private string _lastHardwareTopologyCustomerBaseSubtreeSample =
+        string.Empty;
+
+    private string _lastHardwareTopologyCustomerBaseSubtreeError =
+        string.Empty;
+
+    private int _lastCustomerBaseStateProbeComponentCount;
+    private int _lastCustomerBaseStateProbeFieldCount;
+    private int _lastCustomerBaseStateProbePropertyCount;
+    private int _lastCustomerBaseStateProbeValueCount;
+    private int _lastCustomerBaseStateProbeReferenceCount;
+    private int _lastCustomerBaseStateProbeScalarCount;
+    private int _lastCustomerBaseStateProbeNullCount;
+    private int _lastCustomerBaseStateProbeUnsupportedCount;
+    private int _lastCustomerBaseStateProbeUnavailableCount;
+
+    private string _lastCustomerBaseStateProbeFields =
+        string.Empty;
+
+    private string _lastCustomerBaseStateProbeProperties =
+        string.Empty;
+
+    private string _lastCustomerBaseRelatedTypeSummary =
+        string.Empty;
+
+    private string _lastCustomerBaseStateProbeReferenceTypes =
+        string.Empty;
+
+    private string _lastCustomerBaseStateProbeUnsupportedTypes =
+        string.Empty;
+
+    private string _lastCustomerBaseStateProbeSample =
+        string.Empty;
+
+    private string _lastCustomerBaseStateProbeError =
+        string.Empty;
+
+    private int _lastCustomerBaseCableLinkCollectionBaseCount;
+    private int _lastCustomerBaseCableLinkCollectionDeclaredCount;
+    private int _lastCustomerBaseCableLinkCollectionReferenceCount;
+    private int _lastCustomerBaseCableLinkCollectionUniqueReferenceCount;
+    private int _lastCustomerBaseCableLinkCollectionTopologyTargetCount;
+    private int _lastCustomerBaseCableLinkCollectionTopologyTargetMatchCount;
+    private int _lastCustomerBaseCableLinkCollectionNonTargetReferenceCount;
+
+    private string _lastCustomerBaseCableLinkCollectionSample =
+        string.Empty;
+
+    private string _lastHardwareTopologySample =
+        string.Empty;
+
+    private string _lastHardwareTopologyError =
+        string.Empty;
+
+    private string _lastHardwareSnapshotError =
+        string.Empty;
+
+    private string _lastHardwareSnapshotSample =
+        string.Empty;
+
     public string Id =>
         "dcml.test.lifecycle";
 
@@ -205,6 +464,26 @@ public sealed class TestModule : IDCMLModule
                 typeof(IDCMLGameTypeCatalog))
             as IDCMLGameTypeCatalog;
 
+        _gameResourceDiscovery =
+            context.Services.GetService(
+                typeof(IDCMLGameResourceDiscovery))
+            as IDCMLGameResourceDiscovery;
+
+        _gameTypeInspector =
+            context.Services.GetService(
+                typeof(IDCMLGameTypeInspector))
+            as IDCMLGameTypeInspector;
+
+        _gameThread =
+            context.Services.GetService(
+                typeof(IDCMLGameThread))
+            as IDCMLGameThread;
+
+        _gameComponentStateReader =
+            context.Services.GetService(
+                typeof(IDCMLGameComponentStateReader))
+            as IDCMLGameComponentStateReader;
+
         if (_logger is null)
         {
             throw new InvalidOperationException(
@@ -247,6 +526,33 @@ public sealed class TestModule : IDCMLModule
                 "DCML did not provide IDCMLGameTypeCatalog through the module service provider.");
         }
 
+        if (_gameResourceDiscovery is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameResourceDiscovery through the module service provider.");
+        }
+
+        if (_gameTypeInspector is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameTypeInspector through the module service provider.");
+        }
+
+        if (_gameThread is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameThread through the module service provider.");
+        }
+
+        if (_gameComponentStateReader is null)
+        {
+            throw new InvalidOperationException(
+                "DCML did not provide IDCMLGameComponentStateReader through the module service provider.");
+        }
+
+        _lastGameThreadInitializeWasMainThread =
+            _gameThread.IsMainThread;
+
         _dataCenterApi =
             DataCenterApi.Create(
                 context);
@@ -268,7 +574,11 @@ public sealed class TestModule : IDCMLModule
             DCMLRuntimeCapabilities.Events,
             DCMLRuntimeCapabilities.GameSceneLifecycle,
             DCMLRuntimeCapabilities.GameObjectDiscovery,
-            DCMLRuntimeCapabilities.GameTypeCatalog
+            DCMLRuntimeCapabilities.GameTypeCatalog,
+            DCMLRuntimeCapabilities.GameResourceDiscovery,
+            DCMLRuntimeCapabilities.GameTypeInspection,
+            DCMLRuntimeCapabilities.GameMainThread,
+            DCMLRuntimeCapabilities.GameComponentState
         })
         {
             if (!_runtimeInfo.HasCapability(capability))
@@ -328,6 +638,18 @@ public sealed class TestModule : IDCMLModule
             "Game type catalog service registered.");
 
         _logger.Info(
+            "Game resource discovery service registered.");
+
+        _logger.Info(
+            "Game type inspection service registered.");
+
+        _logger.Info(
+            "Game main-thread scheduler service registered.");
+
+        _logger.Info(
+            "Game component-state reader service registered.");
+
+        _logger.Info(
             "Optional DCML.DataCenter recommended API enabled by this module.");
     }
 
@@ -343,6 +665,8 @@ public sealed class TestModule : IDCMLModule
 
         AppendProof(
             "Start");
+
+        RunGameThreadProbe();
 
         _logger!.Info(
             "Start completed.");
@@ -372,6 +696,9 @@ public sealed class TestModule : IDCMLModule
                 _settings);
         }
 
+        CancelAutomaticSceneDiagnostics(
+            "Module stopping.");
+
         _probeSubscription?.Dispose();
         _probeSubscription =
             null;
@@ -385,6 +712,86 @@ public sealed class TestModule : IDCMLModule
 
         _logger?.Info(
             "Stop completed.");
+    }
+
+    private void RunGameThreadProbe()
+    {
+        if (_gameThread is null)
+        {
+            return;
+        }
+
+        _gameThreadProbeRuns++;
+        _lastGameThreadError =
+            string.Empty;
+
+        try
+        {
+            _gameThread.Post(
+                () =>
+                {
+                    _lastGameThreadPostCount++;
+                    _lastGameThreadPostWasMainThread =
+                        _gameThread.IsMainThread;
+
+                    AppendProof(
+                        "GameThreadPost");
+                });
+
+            _ = Task.Run(
+                async () =>
+                {
+                    try
+                    {
+                        _lastGameThreadBackgroundWasMainThread =
+                            _gameThread.IsMainThread;
+
+                        await _gameThread.InvokeAsync(
+                            () =>
+                            {
+                                _lastGameThreadInvokeCount++;
+                                _lastGameThreadInvokeWasMainThread =
+                                    _gameThread.IsMainThread;
+
+                                AppendProof(
+                                    "GameThreadInvoke");
+                            })
+                            .ConfigureAwait(
+                                false);
+                    }
+                    catch (Exception exception)
+                    {
+                        _lastGameThreadError =
+                            exception.GetType().FullName +
+                            ": " +
+                            exception.Message;
+
+                        try
+                        {
+                            await _gameThread.InvokeAsync(
+                                () =>
+                                    AppendProof(
+                                        "GameThreadError"))
+                                .ConfigureAwait(
+                                    false);
+                        }
+                        catch
+                        {
+                            // The diagnostic must not affect the module.
+                        }
+                    }
+                });
+        }
+        catch (Exception exception)
+        {
+            _lastGameThreadError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            AppendProof(
+                "GameThreadError");
+        }
     }
 
     private void OnProbeEvent(
@@ -417,26 +824,2018 @@ public sealed class TestModule : IDCMLModule
 
         if (
             eventData.Stage ==
-                DCMLSceneLifecycleStage.Initialized &&
-            !string.IsNullOrWhiteSpace(
+                DCMLSceneLifecycleStage.Unloaded
+        )
+        {
+            CancelAutomaticSceneDiagnostics(
+                "Scene unloaded.");
+
+            return;
+        }
+
+        if (
+            eventData.Stage !=
+                DCMLSceneLifecycleStage.Initialized ||
+            string.IsNullOrWhiteSpace(
                 eventData.SceneName)
         )
         {
-            RunObjectDiscovery(
-                eventData.SceneName);
-
-            RunRecommendedDataCenterApi(
-                eventData.SceneName);
-
-            RunTargetedSemanticDiscovery(
-                eventData.SceneName);
-
-            RunComponentInventory(
-                eventData.SceneName);
-
-            RunGameTypeCatalog(
-                eventData.SceneName);
+            return;
         }
+
+        if (
+            _settings?.EnableAutomaticSceneDiagnostics !=
+                true
+        )
+        {
+            _logger?.Info(
+                "Automatic scene diagnostics are disabled. " +
+                "The scene callback returned without running discovery or hardware scans.");
+
+            return;
+        }
+
+        ScheduleAutomaticSceneDiagnostics(
+            eventData.SceneName);
+    }
+
+    private void ScheduleAutomaticSceneDiagnostics(
+        string sceneName)
+    {
+        if (
+            _gameThread is null ||
+            _settings is null
+        )
+        {
+            return;
+        }
+
+        int generation =
+            ++_automaticSceneDiagnosticGeneration;
+
+        _automaticSceneDiagnosticPending =
+            true;
+
+        _automaticSceneDiagnosticScene =
+            sceneName;
+
+        _automaticSceneDiagnosticFramesRemaining =
+            Math.Max(
+                1,
+                _settings.SceneDiagnosticDelayFrames);
+
+        _automaticSceneDiagnosticStage =
+            0;
+
+        _automaticSceneDiagnosticSchedules++;
+
+        _automaticSceneDiagnosticLastError =
+            string.Empty;
+
+        _logger?.Info(
+            $"Automatic scene diagnostics scheduled for '{sceneName}' " +
+            $"after {_automaticSceneDiagnosticFramesRemaining} update frame(s). " +
+            $"Heavy scans enabled: {_settings.EnableHeavyAutomaticSceneDiagnostics}.");
+
+        _gameThread.Post(
+            () =>
+                AdvanceAutomaticSceneDiagnostics(
+                    generation));
+    }
+
+    private void AdvanceAutomaticSceneDiagnostics(
+        int generation)
+    {
+        if (
+            !_automaticSceneDiagnosticPending ||
+            generation !=
+                _automaticSceneDiagnosticGeneration ||
+            _gameThread is null ||
+            _settings is null
+        )
+        {
+            return;
+        }
+
+        if (
+            _gameLifecycle is null ||
+            !_gameLifecycle.HasCurrentScene ||
+            !string.Equals(
+                _gameLifecycle.CurrentSceneName,
+                _automaticSceneDiagnosticScene,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            CancelAutomaticSceneDiagnostics(
+                "The active scene changed before diagnostics completed.");
+
+            return;
+        }
+
+        if (
+            _automaticSceneDiagnosticFramesRemaining >
+                0
+        )
+        {
+            _automaticSceneDiagnosticFramesRemaining--;
+
+            _gameThread.Post(
+                () =>
+                    AdvanceAutomaticSceneDiagnostics(
+                        generation));
+
+            return;
+        }
+
+        try
+        {
+            RunAutomaticSceneDiagnosticStage(
+                _automaticSceneDiagnosticScene,
+                _automaticSceneDiagnosticStage);
+
+            _automaticSceneDiagnosticStage++;
+
+            int stageCount =
+                _settings.EnableHeavyAutomaticSceneDiagnostics
+                    ? HeavyAutomaticSceneDiagnosticStageCount
+                    : SafeAutomaticSceneDiagnosticStageCount;
+
+            if (
+                _automaticSceneDiagnosticStage >=
+                    stageCount
+            )
+            {
+                _automaticSceneDiagnosticPending =
+                    false;
+
+                _automaticSceneDiagnosticCompletions++;
+
+                _logger?.Info(
+                    $"Automatic scene diagnostics completed for '{_automaticSceneDiagnosticScene}'.");
+
+                AppendProof(
+                    "AutomaticSceneDiagnosticsCompleted");
+
+                return;
+            }
+
+            _gameThread.Post(
+                () =>
+                    AdvanceAutomaticSceneDiagnostics(
+                        generation));
+        }
+        catch (Exception exception)
+        {
+            _automaticSceneDiagnosticLastError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            CancelAutomaticSceneDiagnostics(
+                "A diagnostic stage failed.");
+
+            _logger?.Error(
+                "Automatic scene diagnostics failed: " +
+                _automaticSceneDiagnosticLastError);
+        }
+    }
+
+    private void RunAutomaticSceneDiagnosticStage(
+        string sceneName,
+        int stage)
+    {
+        switch (stage)
+        {
+            case 0:
+                RunObjectDiscovery(
+                    sceneName);
+
+                break;
+
+            case 1:
+                RunGameTypeCatalog(
+                    sceneName);
+
+                break;
+
+            case 2:
+                RunGameResourceDiscovery(
+                    sceneName);
+
+                break;
+
+            case 3:
+                RunRecommendedDataCenterApi(
+                    sceneName);
+
+                break;
+
+            case 4:
+                RunTargetedSemanticDiscovery(
+                    sceneName);
+
+                break;
+
+            case 5:
+                RunComponentInventory(
+                    sceneName);
+
+                break;
+
+            case 6:
+                RunGameTypeInspection(
+                    sceneName);
+
+                break;
+
+            case 7:
+                _ =
+                    RunHardwareSnapshotsAsync(
+                        sceneName);
+
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported automatic scene diagnostic stage {stage}.");
+        }
+    }
+
+    private void CancelAutomaticSceneDiagnostics(
+        string reason)
+    {
+        if (!_automaticSceneDiagnosticPending)
+        {
+            _automaticSceneDiagnosticGeneration++;
+
+            return;
+        }
+
+        _automaticSceneDiagnosticPending =
+            false;
+
+        _automaticSceneDiagnosticGeneration++;
+
+        _automaticSceneDiagnosticCancellations++;
+
+        _logger?.Info(
+            "Automatic scene diagnostics canceled. " +
+            reason);
+    }
+
+    private async Task RunHardwareSnapshotsAsync(
+        string sceneName)
+    {
+        if (_dataCenterApi?.Hardware is null)
+        {
+            return;
+        }
+
+        try
+        {
+            DataCenterHardwareSnapshotSet snapshot =
+                await _dataCenterApi.Hardware
+                    .CaptureAsync(
+                        new DataCenterHardwareSnapshotQuery(
+                            sceneName:
+                                sceneName,
+                            includeSceneObjects:
+                                true,
+                            includeResources:
+                                true,
+                            maxPerType:
+                                64))
+                    .ConfigureAwait(
+                        false);
+
+            _hardwareSnapshotRuns++;
+            _lastHardwareSnapshotScene = sceneName;
+            _lastHardwareSnapshotServerCount = snapshot.Servers.Count;
+            _lastHardwareSnapshotRackCount = snapshot.Racks.Count;
+            _lastHardwareSnapshotNetworkDeviceCount = snapshot.NetworkDevices.Count;
+            _lastHardwareSnapshotSfpCount = snapshot.SfpModules.Count;
+            _lastHardwareSnapshotCableCount = snapshot.Cables.Count;
+
+            _lastHardwareSnapshotServerDefinitionCount =
+                snapshot.ServerDefinitions.Count;
+            _lastHardwareSnapshotServerInstanceCount =
+                snapshot.ServerInstances.Count;
+            _lastHardwareSnapshotRackDefinitionCount =
+                snapshot.RackDefinitions.Count;
+            _lastHardwareSnapshotRackInstanceCount =
+                snapshot.RackInstances.Count;
+            _lastHardwareSnapshotNetworkDeviceDefinitionCount =
+                snapshot.NetworkDeviceDefinitions.Count;
+            _lastHardwareSnapshotNetworkDeviceInstanceCount =
+                snapshot.NetworkDeviceInstances.Count;
+            _lastHardwareSnapshotSfpDefinitionCount =
+                snapshot.SfpModuleDefinitions.Count;
+            _lastHardwareSnapshotSfpInstanceCount =
+                snapshot.SfpModuleInstances.Count;
+            _lastHardwareSnapshotCableDefinitionCount =
+                snapshot.CableDefinitions.Count;
+            _lastHardwareSnapshotCableInstanceCount =
+                snapshot.CableInstances.Count;
+
+            _lastHardwareSnapshotSfpLinkedCount =
+                snapshot.SfpModuleInstances.Count(
+                    value =>
+                        value.Link is not null);
+            _lastHardwareSnapshotCableParentServerCount =
+                snapshot.CableInstances.Count(
+                    value =>
+                        value.ParentServer is not null);
+            _lastHardwareSnapshotCableParentSwitchCount =
+                snapshot.CableInstances.Count(
+                    value =>
+                        value.ParentSwitch is not null);
+            _lastHardwareSnapshotCableParentPatchPanelCount =
+                snapshot.CableInstances.Count(
+                    value =>
+                        value.ParentPatchPanel is not null);
+            _lastHardwareSnapshotCableParentInternetCount =
+                snapshot.CableInstances.Count(
+                    value =>
+                        value.ParentInternet is not null);
+            _lastHardwareSnapshotCableInsertedSfpCount =
+                snapshot.CableInstances.Count(
+                    value =>
+                        value.InsertedSfp is not null);
+
+            _lastHardwareSnapshotError = string.Empty;
+
+            _lastHardwareSnapshotSample =
+                string.Join(
+                    " || ",
+                    snapshot.Servers
+                        .Take(3)
+                        .Select(
+                            value =>
+                                "server-" +
+                                (value.IsResource ? "definition:" : "instance:") +
+                                value.Name +
+                                "|ip=" + (value.IP ?? "(null)") +
+                                "|on=" + FormatNullable(value.IsOn) +
+                                "|processing=" +
+                                FormatNullable(value.CurrentProcessingSpeed) +
+                                "/" +
+                                FormatNullable(value.MaxProcessingSpeed))
+                        .Concat(
+                            snapshot.Racks
+                                .Take(2)
+                                .Select(
+                                    value =>
+                                        "rack-" +
+                                        (value.IsResource ? "definition:" : "instance:") +
+                                        value.Name +
+                                        "|positionsOff=" +
+                                        FormatNullable(value.ArePositionsTurnedOff)))
+                        .Concat(
+                            snapshot.NetworkDevices
+                                .Take(6)
+                                .Select(
+                                    value =>
+                                        value.Kind + "-" +
+                                        (value.IsResource ? "definition:" : "instance:") +
+                                        value.Name +
+                                        "|ports=" + FormatNullable(value.PortCount) +
+                                        "|on=" + FormatNullable(value.IsOn) +
+                                        "|asn=" + FormatNullable(value.ASN) +
+                                        "|clusterIp=" + (value.ClusterIP ?? "(null)")))
+                        .Concat(
+                            snapshot.SfpModules
+                                .Take(2)
+                                .Select(
+                                    value =>
+                                        "sfp-" +
+                                        (value.IsResource ? "definition:" : "instance:") +
+                                        value.Name +
+                                        "|speed=" + FormatNullable(value.Speed) +
+                                        "|type=" + FormatNullable(value.SfpType)))
+                        .Concat(
+                            snapshot.Cables
+                                .Take(3)
+                                .Select(
+                                    value =>
+                                        "cable-" +
+                                        (value.IsResource ? "definition:" : "instance:") +
+                                        value.Name +
+                                        "|speed=" + FormatNullable(value.ConnectionSpeed) +
+                                        "|fibre=" + FormatNullable(value.IsFibrePort) +
+                                        "|sfp=" + FormatNullable(value.IsSfpPort) +
+                                        "|type=" + (value.TypeOfLink ?? "(null)"))));
+
+            _lastHardwareRelationshipSample =
+                string.Join(
+                    " || ",
+                    snapshot.SfpModuleInstances
+                        .Where(
+                            value =>
+                                value.Link is not null)
+                        .Take(4)
+                        .Select(
+                            value =>
+                                "sfp:" +
+                                value.Name +
+                                "->" +
+                                FormatHardwareReference(
+                                    value.Link))
+                        .Concat(
+                            snapshot.CableInstances
+                                .Where(
+                                    value =>
+                                        value.ParentServer is not null ||
+                                        value.ParentSwitch is not null ||
+                                        value.ParentPatchPanel is not null ||
+                                        value.ParentInternet is not null ||
+                                        value.InsertedSfp is not null)
+                                .Take(8)
+                                .Select(
+                                    value =>
+                                        "cable:" +
+                                        value.Name +
+                                        "|server=" +
+                                        FormatHardwareReference(
+                                            value.ParentServer) +
+                                        "|switch=" +
+                                        FormatHardwareReference(
+                                            value.ParentSwitch) +
+                                        "|patchPanel=" +
+                                        FormatHardwareReference(
+                                            value.ParentPatchPanel) +
+                                        "|internet=" +
+                                        FormatHardwareReference(
+                                            value.ParentInternet) +
+                                        "|sfp=" +
+                                        FormatHardwareReference(
+                                            value.InsertedSfp))));
+
+            if (_dataCenterApi?.Topology is not null)
+            {
+                try
+                {
+                    DataCenterHardwareTopologyGraph topology =
+                        await _dataCenterApi.Topology
+                            .CaptureAsync(
+                                new DataCenterHardwareSnapshotQuery(
+                                    sceneName:
+                                        sceneName,
+                                    includeSceneObjects:
+                                        true,
+                                    includeResources:
+                                        true,
+                                    maxPerType:
+                                        64))
+                            .ConfigureAwait(
+                                false);
+
+                    _lastHardwareTopologyNodeCount =
+                        topology.Nodes.Count;
+                    _lastHardwareTopologyEdgeCount =
+                        topology.Edges.Count;
+                    _lastHardwareTopologyResolvedEdgeCount =
+                        topology.ResolvedEdges.Count;
+                    _lastHardwareTopologyUnresolvedEdgeCount =
+                        topology.UnresolvedEdges.Count;
+                    _lastHardwareTopologyCableSearchPages =
+                        topology.CableSearchPages;
+                    _lastHardwareTopologyCableCandidatesScanned =
+                        topology.CableCandidatesScanned;
+                    _lastHardwareTopologyCableSearchExhausted =
+                        topology.CableSearchExhausted;
+                    _lastHardwareTopologyNonSceneSearchPages =
+                        topology.NonSceneCableSearchPages;
+                    _lastHardwareTopologyNonSceneCandidatesScanned =
+                        topology.NonSceneCableCandidatesScanned;
+                    _lastHardwareTopologyNonSceneTargetMatchCount =
+                        topology.NonSceneTargetMatchCount;
+                    _lastHardwareTopologyNonSceneSearchExhausted =
+                        topology.NonSceneCableSearchExhausted;
+                    _lastHardwareTopologyTargetCableDetailRequestedCount =
+                        topology.TargetedCableDetailRequestedCount;
+                    _lastHardwareTopologyTargetCableDetailFoundCount =
+                        topology.TargetedCableDetailFoundCount;
+                    _lastHardwareTopologyTargetCableParentServerCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.ParentServer is not null);
+                    _lastHardwareTopologyTargetCableParentSwitchCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.ParentSwitch is not null);
+                    _lastHardwareTopologyTargetCableParentPatchPanelCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.ParentPatchPanel is not null);
+                    _lastHardwareTopologyTargetCableParentInternetCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.ParentInternet is not null);
+                    _lastHardwareTopologyTargetCableInsertedSfpCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.InsertedSfp is not null);
+                    _lastHardwareTopologyTargetCableSfpPortCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.IsSfpPort == true);
+                    _lastHardwareTopologyTargetCableEndpointCount =
+                        topology.Edges.Count(
+                            edge =>
+                                edge.TargetCable?.IsEndPoint == true);
+                    _lastHardwareTopologyError =
+                        string.Empty;
+
+                    _lastHardwareTopologySample =
+                        string.Join(
+                            " || ",
+                            topology.Edges
+                                .Take(8)
+                                .Select(
+                                    edge =>
+                                        edge.Relationship +
+                                        ":" +
+                                        FormatHardwareReference(
+                                            edge.Source) +
+                                        "->" +
+                                        FormatHardwareReference(
+                                            edge.Target) +
+                                        "|resolved=" +
+                                        edge.TargetResolved +
+                                        "|location=" +
+                                        edge.TargetLocation +
+                                        "|observed=" +
+                                        edge.TargetObserved +
+                                        "|resolvedName=" +
+                                        (
+                                            edge.ResolvedTargetName.Length == 0
+                                                ? "(null)"
+                                                : edge.ResolvedTargetName
+                                        ) +
+                                        "|targetSfpPort=" +
+                                        FormatNullable(
+                                            edge.TargetCable?.IsSfpPort) +
+                                        "|targetEndpoint=" +
+                                        FormatNullable(
+                                            edge.TargetCable?.IsEndPoint) +
+                                        "|targetStartOrEnd=" +
+                                        FormatNullable(
+                                            edge.TargetCable?.IsStartOrEnd) +
+                                        "|targetSwitchId=" +
+                                        (
+                                            string.IsNullOrEmpty(
+                                                edge.TargetCable?.SwitchID)
+                                                ? "(null)"
+                                                : edge.TargetCable!.SwitchID
+                                        ) +
+                                        "|targetType=" +
+                                        (
+                                            string.IsNullOrEmpty(
+                                                edge.TargetCable?.TypeOfLink)
+                                                ? "(null)"
+                                                : edge.TargetCable!.TypeOfLink
+                                        ) +
+                                        "|parentServer=" +
+                                        FormatHardwareReference(
+                                            edge.TargetCable?.ParentServer) +
+                                        "|parentSwitch=" +
+                                        FormatHardwareReference(
+                                            edge.TargetCable?.ParentSwitch) +
+                                        "|parentPatchPanel=" +
+                                        FormatHardwareReference(
+                                            edge.TargetCable?.ParentPatchPanel) +
+                                        "|parentInternet=" +
+                                        FormatHardwareReference(
+                                            edge.TargetCable?.ParentInternet) +
+                                        "|insertedSfp=" +
+                                        FormatHardwareReference(
+                                            edge.TargetCable?.InsertedSfp)));
+
+                    await RunTargetCableHierarchyProbeAsync(
+                            sceneName,
+                            topology)
+                        .ConfigureAwait(
+                            false);
+
+                    AppendProof(
+                        "HardwareTopology");
+                }
+                catch (Exception topologyException)
+                {
+                    _lastHardwareTopologyNodeCount = 0;
+                    _lastHardwareTopologyEdgeCount = 0;
+                    _lastHardwareTopologyResolvedEdgeCount = 0;
+                    _lastHardwareTopologyUnresolvedEdgeCount = 0;
+                    _lastHardwareTopologyCableSearchPages = 0;
+                    _lastHardwareTopologyCableCandidatesScanned = 0;
+                    _lastHardwareTopologyCableSearchExhausted = false;
+                    _lastHardwareTopologyNonSceneSearchPages = 0;
+                    _lastHardwareTopologyNonSceneCandidatesScanned = 0;
+                    _lastHardwareTopologyNonSceneTargetMatchCount = 0;
+                    _lastHardwareTopologyNonSceneSearchExhausted = false;
+                    _lastHardwareTopologyTargetCableDetailRequestedCount = 0;
+                    _lastHardwareTopologyTargetCableDetailFoundCount = 0;
+                    _lastHardwareTopologyTargetCableParentServerCount = 0;
+                    _lastHardwareTopologyTargetCableParentSwitchCount = 0;
+                    _lastHardwareTopologyTargetCableParentPatchPanelCount = 0;
+                    _lastHardwareTopologyTargetCableParentInternetCount = 0;
+                    _lastHardwareTopologyTargetCableInsertedSfpCount = 0;
+                    _lastHardwareTopologyTargetCableSfpPortCount = 0;
+                    _lastHardwareTopologyTargetCableEndpointCount = 0;
+                    ResetTargetCableHierarchyProbe();
+                    _lastHardwareTopologySample = string.Empty;
+                    _lastHardwareTopologyError =
+                        topologyException.GetType().FullName +
+                        ": " +
+                        topologyException.Message;
+
+                    AppendProof(
+                        "HardwareTopologyError");
+                }
+            }
+
+            AppendProof(
+                "HardwareSnapshots");
+
+            _logger?.Info(
+                "Hardware snapshots for scene '" +
+                sceneName +
+                "' returned server=" +
+                snapshot.Servers.Count +
+                ", rack=" +
+                snapshot.Racks.Count +
+                ", network-device=" +
+                snapshot.NetworkDevices.Count +
+                ", sfp=" +
+                snapshot.SfpModules.Count +
+                ", cable=" +
+                snapshot.Cables.Count +
+                "; definitions/instances: server=" +
+                snapshot.ServerDefinitions.Count +
+                "/" +
+                snapshot.ServerInstances.Count +
+                ", rack=" +
+                snapshot.RackDefinitions.Count +
+                "/" +
+                snapshot.RackInstances.Count +
+                ", network=" +
+                snapshot.NetworkDeviceDefinitions.Count +
+                "/" +
+                snapshot.NetworkDeviceInstances.Count +
+                ", sfp=" +
+                snapshot.SfpModuleDefinitions.Count +
+                "/" +
+                snapshot.SfpModuleInstances.Count +
+                ", cable=" +
+                snapshot.CableDefinitions.Count +
+                "/" +
+                snapshot.CableInstances.Count +
+                ".");
+        }
+        catch (Exception exception)
+        {
+            _hardwareSnapshotRuns++;
+            _lastHardwareSnapshotScene = sceneName;
+            _lastHardwareSnapshotServerCount = 0;
+            _lastHardwareSnapshotRackCount = 0;
+            _lastHardwareSnapshotNetworkDeviceCount = 0;
+            _lastHardwareSnapshotSfpCount = 0;
+            _lastHardwareSnapshotCableCount = 0;
+            _lastHardwareSnapshotServerDefinitionCount = 0;
+            _lastHardwareSnapshotServerInstanceCount = 0;
+            _lastHardwareSnapshotRackDefinitionCount = 0;
+            _lastHardwareSnapshotRackInstanceCount = 0;
+            _lastHardwareSnapshotNetworkDeviceDefinitionCount = 0;
+            _lastHardwareSnapshotNetworkDeviceInstanceCount = 0;
+            _lastHardwareSnapshotSfpDefinitionCount = 0;
+            _lastHardwareSnapshotSfpInstanceCount = 0;
+            _lastHardwareSnapshotCableDefinitionCount = 0;
+            _lastHardwareSnapshotCableInstanceCount = 0;
+            _lastHardwareSnapshotSfpLinkedCount = 0;
+            _lastHardwareSnapshotCableParentServerCount = 0;
+            _lastHardwareSnapshotCableParentSwitchCount = 0;
+            _lastHardwareSnapshotCableParentPatchPanelCount = 0;
+            _lastHardwareSnapshotCableParentInternetCount = 0;
+            _lastHardwareSnapshotCableInsertedSfpCount = 0;
+            _lastHardwareRelationshipSample = string.Empty;
+            _lastHardwareTopologyNodeCount = 0;
+            _lastHardwareTopologyEdgeCount = 0;
+            _lastHardwareTopologyResolvedEdgeCount = 0;
+            _lastHardwareTopologyUnresolvedEdgeCount = 0;
+            _lastHardwareTopologyCableSearchPages = 0;
+            _lastHardwareTopologyCableCandidatesScanned = 0;
+            _lastHardwareTopologyCableSearchExhausted = false;
+            _lastHardwareTopologyNonSceneSearchPages = 0;
+            _lastHardwareTopologyNonSceneCandidatesScanned = 0;
+            _lastHardwareTopologyNonSceneTargetMatchCount = 0;
+            _lastHardwareTopologyNonSceneSearchExhausted = false;
+            _lastHardwareTopologyTargetCableDetailRequestedCount = 0;
+            _lastHardwareTopologyTargetCableDetailFoundCount = 0;
+            _lastHardwareTopologyTargetCableParentServerCount = 0;
+            _lastHardwareTopologyTargetCableParentSwitchCount = 0;
+            _lastHardwareTopologyTargetCableParentPatchPanelCount = 0;
+            _lastHardwareTopologyTargetCableParentInternetCount = 0;
+            _lastHardwareTopologyTargetCableInsertedSfpCount = 0;
+            _lastHardwareTopologyTargetCableSfpPortCount = 0;
+            _lastHardwareTopologyTargetCableEndpointCount = 0;
+            ResetTargetCableHierarchyProbe();
+            _lastHardwareTopologySample = string.Empty;
+            _lastHardwareTopologyError = string.Empty;
+            _lastHardwareSnapshotError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+            _lastHardwareSnapshotSample = string.Empty;
+
+            AppendProof(
+                "HardwareSnapshotsError");
+
+            _logger?.Error(
+                "Hardware snapshots failed for scene '" +
+                sceneName +
+                "'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private async Task RunTargetCableHierarchyProbeAsync(
+        string sceneName,
+        DataCenterHardwareTopologyGraph topology)
+    {
+        ResetTargetCableHierarchyProbe();
+
+        if (
+            _gameObjectDiscovery is null ||
+            _gameThread is null
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            int[] targetGameObjectIds =
+                topology.Edges
+                    .Where(
+                        edge =>
+                            edge.TargetResolved &&
+                            edge.TargetCable is not null)
+                    .Select(
+                        edge =>
+                            edge.TargetCable!.GameObjectInstanceId)
+                    .Distinct()
+                    .ToArray();
+
+            _lastHardwareTopologyTargetHierarchyTargetCount =
+                targetGameObjectIds.Length;
+
+            if (targetGameObjectIds.Length == 0)
+            {
+                return;
+            }
+
+            var infoById =
+                new Dictionary<int, DCMLGameObjectInfo>();
+
+            var frontier =
+                new HashSet<int>(
+                    targetGameObjectIds);
+
+            const int maximumDepth = 8;
+
+            for (
+                int depth = 0;
+                depth < maximumDepth &&
+                frontier.Count > 0;
+                depth++)
+            {
+                int[] requestedIds =
+                    frontier.ToArray();
+
+                IReadOnlyList<DCMLGameObjectInfo> infos =
+                    await _gameThread
+                        .InvokeAsync(
+                            () =>
+                                _gameObjectDiscovery.Find(
+                                    new DCMLGameObjectQuery(
+                                        sceneName:
+                                            sceneName,
+                                        includeInactive:
+                                            true,
+                                        maxResults:
+                                            Math.Min(
+                                                requestedIds.Length,
+                                                DCMLGameObjectQuery.MaximumMaxResults),
+                                        instanceIds:
+                                            requestedIds)))
+                        .ConfigureAwait(
+                            false);
+
+                frontier.Clear();
+
+                foreach (
+                    DCMLGameObjectInfo info in
+                    infos)
+                {
+                    infoById[info.InstanceId] =
+                        info;
+
+                    if (
+                        info.ParentInstanceId.HasValue &&
+                        !infoById.ContainsKey(
+                            info.ParentInstanceId.Value)
+                    )
+                    {
+                        frontier.Add(
+                            info.ParentInstanceId.Value);
+                    }
+                }
+            }
+
+            _lastHardwareTopologyTargetHierarchyMatchedTargetCount =
+                targetGameObjectIds.Count(
+                    value =>
+                        infoById.ContainsKey(
+                            value));
+
+            _lastHardwareTopologyTargetHierarchyObjectCount =
+                infoById.Count;
+
+            var samples =
+                new List<string>();
+
+            var customerBaseRootIds =
+                new HashSet<int>();
+
+            foreach (
+                int targetId in
+                targetGameObjectIds)
+            {
+                var chain =
+                    new List<DCMLGameObjectInfo>();
+
+                int? currentId =
+                    targetId;
+
+                var visited =
+                    new HashSet<int>();
+
+                while (
+                    currentId.HasValue &&
+                    chain.Count < maximumDepth &&
+                    visited.Add(
+                        currentId.Value) &&
+                    infoById.TryGetValue(
+                        currentId.Value,
+                        out DCMLGameObjectInfo? current))
+                {
+                    chain.Add(
+                        current);
+
+                    currentId =
+                        current.ParentInstanceId;
+                }
+
+                IReadOnlyList<DCMLGameObjectInfo> ancestors =
+                    chain
+                        .Skip(1)
+                        .ToArray();
+
+                DCMLGameObjectInfo? customerBase =
+                    ancestors.FirstOrDefault(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.CustomerBase"));
+
+                if (customerBase is not null)
+                {
+                    customerBaseRootIds.Add(
+                        customerBase.InstanceId);
+                }
+
+                if (
+                    ancestors.Any(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.Server"))
+                )
+                {
+                    _lastHardwareTopologyTargetHierarchyServerAncestorCount++;
+                }
+
+                if (
+                    ancestors.Any(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.NetworkSwitch",
+                                "Il2Cpp.Router",
+                                "Il2Cpp.Firewall"))
+                )
+                {
+                    _lastHardwareTopologyTargetHierarchyNetworkDeviceAncestorCount++;
+                }
+
+                if (
+                    ancestors.Any(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.PatchPanel"))
+                )
+                {
+                    _lastHardwareTopologyTargetHierarchyPatchPanelAncestorCount++;
+                }
+
+                if (
+                    ancestors.Any(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.Internet"))
+                )
+                {
+                    _lastHardwareTopologyTargetHierarchyInternetAncestorCount++;
+                }
+
+                if (
+                    ancestors.Any(
+                        value =>
+                            HasExactComponentType(
+                                value,
+                                "Il2Cpp.Rack"))
+                )
+                {
+                    _lastHardwareTopologyTargetHierarchyRackAncestorCount++;
+                }
+
+                if (
+                    samples.Count < 8 &&
+                    chain.Count > 0)
+                {
+                    samples.Add(
+                        string.Join(
+                            " > ",
+                            chain.Select(
+                                (value, depth) =>
+                                    "d" +
+                                    depth +
+                                    ":go#" +
+                                    value.InstanceId +
+                                    ":" +
+                                    value.Name +
+                                    "[" +
+                                    string.Join(
+                                        ",",
+                                        value.ComponentTypeNames
+                                            .Where(
+                                                typeName =>
+                                                    typeName.StartsWith(
+                                                        "Il2Cpp.",
+                                                        StringComparison.Ordinal))
+                                            .Take(8)) +
+                                    "]")));
+                }
+            }
+
+            _lastHardwareTopologyTargetHierarchySample =
+                string.Join(
+                    " || ",
+                    samples);
+
+            _lastHardwareTopologyTargetHierarchyError =
+                string.Empty;
+
+            await RunCustomerBaseSubtreeProbeAsync(
+                    sceneName,
+                    customerBaseRootIds,
+                    topology)
+                .ConfigureAwait(
+                    false);
+        }
+        catch (Exception exception)
+        {
+            ResetTargetCableHierarchyProbe();
+
+            _lastHardwareTopologyTargetHierarchyError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+        }
+    }
+
+    private static bool HasExactComponentType(
+        DCMLGameObjectInfo info,
+        params string[] typeNames)
+    {
+        foreach (
+            string componentTypeName in
+            info.ComponentTypeNames)
+        {
+            foreach (
+                string requestedTypeName in
+                typeNames)
+            {
+                if (
+                    string.Equals(
+                        componentTypeName,
+                        requestedTypeName,
+                        StringComparison.Ordinal)
+                )
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void ResetTargetCableHierarchyProbe()
+    {
+        _lastHardwareTopologyTargetHierarchyTargetCount = 0;
+        _lastHardwareTopologyTargetHierarchyMatchedTargetCount = 0;
+        _lastHardwareTopologyTargetHierarchyObjectCount = 0;
+        _lastHardwareTopologyTargetHierarchyServerAncestorCount = 0;
+        _lastHardwareTopologyTargetHierarchyNetworkDeviceAncestorCount = 0;
+        _lastHardwareTopologyTargetHierarchyPatchPanelAncestorCount = 0;
+        _lastHardwareTopologyTargetHierarchyInternetAncestorCount = 0;
+        _lastHardwareTopologyTargetHierarchyRackAncestorCount = 0;
+        _lastHardwareTopologyTargetHierarchySample = string.Empty;
+        _lastHardwareTopologyTargetHierarchyError = string.Empty;
+
+        ResetCustomerBaseSubtreeProbe();
+    }
+
+    private async Task RunCustomerBaseSubtreeProbeAsync(
+        string sceneName,
+        IReadOnlyCollection<int> rootInstanceIds,
+        DataCenterHardwareTopologyGraph topology)
+    {
+        ResetCustomerBaseSubtreeProbe();
+
+        if (
+            _gameObjectDiscovery is null ||
+            _gameThread is null ||
+            rootInstanceIds.Count == 0
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            _lastHardwareTopologyCustomerBaseRootCount =
+                rootInstanceIds.Count;
+
+            var infoById =
+                new Dictionary<int, DCMLGameObjectInfo>();
+
+            int[] rootIds =
+                rootInstanceIds
+                    .Distinct()
+                    .ToArray();
+
+            IReadOnlyList<DCMLGameObjectInfo> rootInfos =
+                await _gameThread
+                    .InvokeAsync(
+                        () =>
+                            _gameObjectDiscovery.Find(
+                                new DCMLGameObjectQuery(
+                                    sceneName:
+                                        sceneName,
+                                    includeInactive:
+                                        true,
+                                    maxResults:
+                                        Math.Min(
+                                            rootIds.Length,
+                                            DCMLGameObjectQuery.MaximumMaxResults),
+                                    instanceIds:
+                                        rootIds)))
+                    .ConfigureAwait(
+                        false);
+
+            foreach (
+                DCMLGameObjectInfo info in
+                rootInfos)
+            {
+                infoById[info.InstanceId] =
+                    info;
+            }
+
+            var frontier =
+                new HashSet<int>(
+                    rootIds);
+
+            const int maximumDepth =
+                6;
+
+            for (
+                int depth = 0;
+                depth < maximumDepth &&
+                frontier.Count > 0;
+                depth++)
+            {
+                int[] parentIds =
+                    frontier.ToArray();
+
+                IReadOnlyList<DCMLGameObjectInfo> children =
+                    await _gameThread
+                        .InvokeAsync(
+                            () =>
+                                _gameObjectDiscovery.Find(
+                                    new DCMLGameObjectQuery(
+                                        sceneName:
+                                            sceneName,
+                                        includeInactive:
+                                            true,
+                                        maxResults:
+                                            DCMLGameObjectQuery.MaximumMaxResults,
+                                        parentInstanceIds:
+                                            parentIds)))
+                        .ConfigureAwait(
+                            false);
+
+                if (
+                    children.Count ==
+                        DCMLGameObjectQuery.MaximumMaxResults
+                )
+                {
+                    _lastHardwareTopologyCustomerBaseSubtreeAtResultLimit =
+                        true;
+                }
+
+                frontier.Clear();
+
+                foreach (
+                    DCMLGameObjectInfo child in
+                    children)
+                {
+                    if (
+                        !infoById.ContainsKey(
+                            child.InstanceId)
+                    )
+                    {
+                        infoById[child.InstanceId] =
+                            child;
+
+                        frontier.Add(
+                            child.InstanceId);
+                    }
+                }
+            }
+
+            IReadOnlyList<DCMLGameObjectInfo> objects =
+                infoById.Values
+                    .OrderBy(
+                        value =>
+                            value.HierarchyPath,
+                        StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(
+                        value =>
+                            value.InstanceId)
+                    .ToArray();
+
+            _lastHardwareTopologyCustomerBaseSubtreeObjectCount =
+                objects.Count;
+
+            _lastHardwareTopologyCustomerBaseSubtreeNetworkSwitchCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.NetworkSwitch");
+
+            _lastHardwareTopologyCustomerBaseSubtreeRouterCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.Router");
+
+            _lastHardwareTopologyCustomerBaseSubtreeFirewallCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.Firewall");
+
+            _lastHardwareTopologyCustomerBaseSubtreeServerCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.Server");
+
+            _lastHardwareTopologyCustomerBaseSubtreePatchPanelCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.PatchPanel");
+
+            _lastHardwareTopologyCustomerBaseSubtreeInternetCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.Internet");
+
+            _lastHardwareTopologyCustomerBaseSubtreeRackCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.Rack");
+
+            _lastHardwareTopologyCustomerBaseSubtreeCableLinkCount =
+                CountObjectsWithExactComponentType(
+                    objects,
+                    "Il2Cpp.CableLink");
+
+            string[] il2CppTypes =
+                objects
+                    .SelectMany(
+                        value =>
+                            value.ComponentTypeNames)
+                    .Where(
+                        value =>
+                            value.StartsWith(
+                                "Il2Cpp.",
+                                StringComparison.Ordinal))
+                    .Distinct(
+                        StringComparer.Ordinal)
+                    .OrderBy(
+                        value =>
+                            value,
+                        StringComparer.Ordinal)
+                    .ToArray();
+
+            _lastHardwareTopologyCustomerBaseSubtreeIl2CppTypeCount =
+                il2CppTypes.Length;
+
+            _lastHardwareTopologyCustomerBaseSubtreeTypes =
+                string.Join(
+                    ", ",
+                    il2CppTypes);
+
+            _lastHardwareTopologyCustomerBaseSubtreeSample =
+                string.Join(
+                    " || ",
+                    objects
+                        .Where(
+                            value =>
+                                value.ComponentTypeNames.Any(
+                                    typeName =>
+                                        typeName.StartsWith(
+                                            "Il2Cpp.",
+                                            StringComparison.Ordinal)))
+                        .Take(24)
+                        .Select(
+                            value =>
+                                "go#" +
+                                value.InstanceId +
+                                ":" +
+                                value.HierarchyPath +
+                                "[" +
+                                string.Join(
+                                    ",",
+                                    value.ComponentTypeNames
+                                        .Where(
+                                            typeName =>
+                                                typeName.StartsWith(
+                                                    "Il2Cpp.",
+                                                    StringComparison.Ordinal))
+                                        .Take(12)) +
+                                "]"));
+
+            _lastHardwareTopologyCustomerBaseSubtreeError =
+                string.Empty;
+
+            await RunCustomerBaseStateProbeAsync(
+                    sceneName,
+                    rootIds,
+                    topology)
+                .ConfigureAwait(
+                    false);
+        }
+        catch (Exception exception)
+        {
+            ResetCustomerBaseSubtreeProbe();
+
+            _lastHardwareTopologyCustomerBaseSubtreeError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+        }
+    }
+
+    private static int CountObjectsWithExactComponentType(
+        IEnumerable<DCMLGameObjectInfo> objects,
+        string typeName)
+    {
+        return
+            objects.Count(
+                value =>
+                    HasExactComponentType(
+                        value,
+                        typeName));
+    }
+
+    private void ResetCustomerBaseSubtreeProbe()
+    {
+        _lastHardwareTopologyCustomerBaseRootCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeObjectCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeIl2CppTypeCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeNetworkSwitchCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeRouterCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeFirewallCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeServerCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreePatchPanelCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeInternetCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeRackCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeCableLinkCount = 0;
+        _lastHardwareTopologyCustomerBaseSubtreeAtResultLimit = false;
+        _lastHardwareTopologyCustomerBaseSubtreeTypes = string.Empty;
+        _lastHardwareTopologyCustomerBaseSubtreeSample = string.Empty;
+        _lastHardwareTopologyCustomerBaseSubtreeError = string.Empty;
+
+        ResetCustomerBaseStateProbe();
+    }
+
+    private async Task RunCustomerBaseStateProbeAsync(
+        string sceneName,
+        IReadOnlyCollection<int> customerBaseGameObjectIds,
+        DataCenterHardwareTopologyGraph topology)
+    {
+        ResetCustomerBaseStateProbe();
+
+        if (
+            _gameTypeInspector is null ||
+            _gameComponentStateReader is null ||
+            customerBaseGameObjectIds.Count == 0
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            DCMLGameTypeInspection? inspection =
+                _gameTypeInspector.Inspect(
+                    new DCMLGameTypeInspectionQuery(
+                        "Il2Cpp.CustomerBase",
+                        includeInheritedMembers:
+                            false,
+                        maxMembers:
+                            4096));
+
+            if (inspection is null)
+            {
+                _lastCustomerBaseStateProbeError =
+                    "Il2Cpp.CustomerBase was not found by the game type inspector.";
+
+                return;
+            }
+
+            // The IL2CPP interop wrapper exposes native field metadata
+            // through static NativeFieldInfoPtr_* fields. The live
+            // CustomerBase state itself is exposed through properties.
+            // Keep the field diagnostics explicit rather than pretending
+            // those wrapper metadata fields are runtime state.
+            _lastCustomerBaseStateProbeFieldCount =
+                0;
+
+            _lastCustomerBaseStateProbeFields =
+                string.Empty;
+
+            var safePropertyNames =
+                new HashSet<string>(
+                    new[]
+                    {
+                        "cableLinks",
+                        "currentSpeed",
+                        "currentTotalAppSpeeRequirements",
+                        "customerBaseID",
+                        "customerID",
+                        "customerItem",
+                        "howLongToWaitBeforeFine",
+                        "maximumAppRequirementsSpeedTotal",
+                        "wantsInternet",
+                        "wasFullySatisfied"
+                    },
+                    StringComparer.OrdinalIgnoreCase);
+
+            DCMLGameTypeMemberInfo[] properties =
+                inspection.Properties
+                    .Where(
+                        value =>
+                            !value.IsStatic &&
+                            !value.IsInherited &&
+                            value.CanRead &&
+                            safePropertyNames.Contains(
+                                value.Name))
+                    .OrderBy(
+                        value =>
+                            value.Name,
+                        StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+            string[] propertyNames =
+                properties
+                    .Select(
+                        value =>
+                            value.Name)
+                    .Distinct(
+                        StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+            _lastCustomerBaseStateProbePropertyCount =
+                propertyNames.Length;
+
+            _lastCustomerBaseStateProbeProperties =
+                string.Join(
+                    ", ",
+                    properties.Select(
+                        value =>
+                            value.Name +
+                            ":" +
+                            (
+                                value.ValueTypeFullName.Length == 0
+                                    ? "(unknown)"
+                                    : value.ValueTypeFullName
+                            )));
+
+            _lastCustomerBaseRelatedTypeSummary =
+                BuildCustomerBaseRelatedTypeSummary();
+
+            if (propertyNames.Length == 0)
+            {
+                _lastCustomerBaseStateProbeError =
+                    "No targeted readable Il2Cpp.CustomerBase properties were found.";
+
+                return;
+            }
+
+            int[] gameObjectIds =
+                customerBaseGameObjectIds
+                    .Distinct()
+                    .ToArray();
+
+            IReadOnlyList<DCMLGameComponentState> states =
+                await _gameComponentStateReader
+                    .ReadAsync(
+                        new DCMLGameComponentStateQuery(
+                            componentTypeName:
+                                "Il2Cpp.CustomerBase",
+                            memberNames:
+                                propertyNames,
+                            sceneName:
+                                sceneName,
+                            scope:
+                                DCMLGameComponentScope.Scene,
+                            includeInactive:
+                                true,
+                            maxResults:
+                                Math.Min(
+                                    gameObjectIds.Length,
+                                    DCMLGameComponentStateQuery.MaximumMaxResults),
+                            gameObjectInstanceIds:
+                                gameObjectIds))
+                    .ConfigureAwait(
+                        false);
+
+            _lastCustomerBaseStateProbeComponentCount =
+                states.Count;
+
+            var topologyTargetIds =
+                new HashSet<int>(
+                    topology.Edges
+                        .Where(
+                            edge =>
+                                edge.TargetResolved &&
+                                edge.TargetCable is not null)
+                        .Select(
+                            edge =>
+                                edge.TargetCable!.ComponentInstanceId));
+
+            _lastCustomerBaseCableLinkCollectionTopologyTargetCount =
+                topologyTargetIds.Count;
+
+            var allCableLinkReferenceIds =
+                new HashSet<int>();
+
+            var cableCollectionSamples =
+                new List<string>();
+
+            var referenceTypes =
+                new HashSet<string>(
+                    StringComparer.Ordinal);
+
+            var unsupportedTypes =
+                new HashSet<string>(
+                    StringComparer.Ordinal);
+
+            var samples =
+                new List<string>();
+
+            foreach (
+                DCMLGameComponentState state in
+                states)
+            {
+                var values =
+                    new List<string>();
+
+                foreach (
+                    KeyValuePair<string, DCMLGameValue> pair in
+                    state.Values
+                        .OrderBy(
+                            value =>
+                                value.Key,
+                            StringComparer.OrdinalIgnoreCase))
+                {
+                    DCMLGameValue value =
+                        pair.Value;
+
+                    _lastCustomerBaseStateProbeValueCount++;
+
+                    switch (value.Kind)
+                    {
+                        case DCMLGameValueKind.Null:
+                            _lastCustomerBaseStateProbeNullCount++;
+                            break;
+
+                        case DCMLGameValueKind.String:
+                        case DCMLGameValueKind.Boolean:
+                        case DCMLGameValueKind.Integer:
+                        case DCMLGameValueKind.Number:
+                        case DCMLGameValueKind.Enum:
+                            _lastCustomerBaseStateProbeScalarCount++;
+                            break;
+
+                        case DCMLGameValueKind.Reference:
+                            _lastCustomerBaseStateProbeReferenceCount++;
+
+                            if (
+                                value.ReferenceValue is not null &&
+                                value.ReferenceValue.TypeName.Length > 0
+                            )
+                            {
+                                referenceTypes.Add(
+                                    value.ReferenceValue.TypeName);
+                            }
+
+                            break;
+
+                        case DCMLGameValueKind.ReferenceCollection:
+                            _lastCustomerBaseStateProbeReferenceCount +=
+                                value.ReferenceValues.Count;
+
+                            foreach (
+                                DCMLGameReference collectionReference in
+                                value.ReferenceValues)
+                            {
+                                if (
+                                    collectionReference.TypeName.Length > 0
+                                )
+                                {
+                                    referenceTypes.Add(
+                                        collectionReference.TypeName);
+                                }
+                            }
+
+                            break;
+
+                        case DCMLGameValueKind.Unsupported:
+                            _lastCustomerBaseStateProbeUnsupportedCount++;
+
+                            if (value.TypeName.Length > 0)
+                            {
+                                unsupportedTypes.Add(
+                                    value.TypeName);
+                            }
+
+                            break;
+
+                        case DCMLGameValueKind.Unavailable:
+                            _lastCustomerBaseStateProbeUnavailableCount++;
+                            break;
+                    }
+
+                    if (
+                        values.Count < 24 &&
+                        (
+                            value.Kind ==
+                                DCMLGameValueKind.Reference ||
+                            value.Kind ==
+                                DCMLGameValueKind.ReferenceCollection ||
+                            value.Kind ==
+                                DCMLGameValueKind.String ||
+                            value.Kind ==
+                                DCMLGameValueKind.Boolean ||
+                            value.Kind ==
+                                DCMLGameValueKind.Integer ||
+                            value.Kind ==
+                                DCMLGameValueKind.Number ||
+                            value.Kind ==
+                                DCMLGameValueKind.Enum ||
+                            value.Kind ==
+                                DCMLGameValueKind.Unsupported
+                        )
+                    )
+                    {
+                        values.Add(
+                            pair.Key +
+                            "=" +
+                            FormatGameValue(
+                                value));
+                    }
+                }
+
+                if (
+                    state.Values.TryGetValue(
+                        "cableLinks",
+                        out DCMLGameValue? cableLinksValue) &&
+                    cableLinksValue.Kind ==
+                        DCMLGameValueKind.ReferenceCollection
+                )
+                {
+                    _lastCustomerBaseCableLinkCollectionBaseCount++;
+
+                    if (
+                        cableLinksValue.CollectionCount.HasValue)
+                    {
+                        _lastCustomerBaseCableLinkCollectionDeclaredCount +=
+                            cableLinksValue.CollectionCount.Value;
+                    }
+
+                    _lastCustomerBaseCableLinkCollectionReferenceCount +=
+                        cableLinksValue.ReferenceValues.Count;
+
+                    foreach (
+                        DCMLGameReference cableReference in
+                        cableLinksValue.ReferenceValues)
+                    {
+                        allCableLinkReferenceIds.Add(
+                            cableReference.InstanceId);
+
+                        if (
+                            topologyTargetIds.Contains(
+                                cableReference.InstanceId)
+                        )
+                        {
+                            _lastCustomerBaseCableLinkCollectionTopologyTargetMatchCount++;
+                        }
+                        else
+                        {
+                            _lastCustomerBaseCableLinkCollectionNonTargetReferenceCount++;
+                        }
+                    }
+
+                    if (
+                        cableCollectionSamples.Count < 9
+                    )
+                    {
+                        long? baseId =
+                            state.Values.TryGetValue(
+                                "customerBaseID",
+                                out DCMLGameValue? baseIdValue)
+                                ? baseIdValue.IntegerValue
+                                : null;
+
+                        cableCollectionSamples.Add(
+                            "base#" +
+                            (
+                                baseId?.ToString() ??
+                                "?"
+                            ) +
+                            "/go#" +
+                            state.GameObjectInstanceId +
+                            "=[" +
+                            string.Join(
+                                ", ",
+                                cableLinksValue.ReferenceValues
+                                    .Take(8)
+                                    .Select(
+                                        reference =>
+                                            reference.TypeName +
+                                            "#" +
+                                            reference.InstanceId +
+                                            ":" +
+                                            reference.Name +
+                                            "|topologyTarget=" +
+                                            topologyTargetIds.Contains(
+                                                reference.InstanceId))) +
+                            "]");
+                    }
+                }
+
+                if (samples.Count < 9)
+                {
+                    samples.Add(
+                        "go#" +
+                        state.GameObjectInstanceId +
+                        "/component#" +
+                        state.ComponentInstanceId +
+                        ":" +
+                        state.Name +
+                        "{" +
+                        string.Join(
+                            ", ",
+                            values) +
+                        "}");
+                }
+            }
+
+            _lastCustomerBaseCableLinkCollectionUniqueReferenceCount =
+                allCableLinkReferenceIds.Count;
+
+            _lastCustomerBaseCableLinkCollectionSample =
+                string.Join(
+                    " || ",
+                    cableCollectionSamples);
+
+            _lastCustomerBaseStateProbeReferenceTypes =
+                referenceTypes.Count == 0
+                    ? "(none)"
+                    : string.Join(
+                        ", ",
+                        referenceTypes
+                            .OrderBy(
+                                value =>
+                                    value,
+                                StringComparer.Ordinal));
+
+            _lastCustomerBaseStateProbeUnsupportedTypes =
+                unsupportedTypes.Count == 0
+                    ? "(none)"
+                    : string.Join(
+                        ", ",
+                        unsupportedTypes
+                            .OrderBy(
+                                value =>
+                                    value,
+                                StringComparer.Ordinal));
+
+            _lastCustomerBaseStateProbeSample =
+                string.Join(
+                    " || ",
+                    samples);
+
+            _lastCustomerBaseStateProbeError =
+                string.Empty;
+        }
+        catch (Exception exception)
+        {
+            ResetCustomerBaseStateProbe();
+
+            _lastCustomerBaseStateProbeError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+        }
+    }
+
+    private string BuildCustomerBaseRelatedTypeSummary()
+    {
+        if (_gameTypeInspector is null)
+        {
+            return "(type inspector unavailable)";
+        }
+
+        string[] typeNames =
+        {
+            "Il2Cpp.CustomerItem",
+            "Il2Cpp.CustomerBaseSaveData"
+        };
+
+        var summaries =
+            new List<string>();
+
+        foreach (
+            string typeName in
+            typeNames)
+        {
+            DCMLGameTypeInspection? inspection =
+                _gameTypeInspector.Inspect(
+                    new DCMLGameTypeInspectionQuery(
+                        typeName,
+                        includeInheritedMembers:
+                            false,
+                        maxMembers:
+                            4096));
+
+            if (inspection is null)
+            {
+                summaries.Add(
+                    typeName +
+                    ":NOT_FOUND");
+
+                continue;
+            }
+
+            string[] readableProperties =
+                inspection.Properties
+                    .Where(
+                        value =>
+                            !value.IsStatic &&
+                            !value.IsInherited &&
+                            value.CanRead)
+                    .OrderBy(
+                        value =>
+                            value.Name,
+                        StringComparer.OrdinalIgnoreCase)
+                    .Take(32)
+                    .Select(
+                        value =>
+                            value.Name +
+                            ":" +
+                            (
+                                value.ValueTypeFullName.Length == 0
+                                    ? "(unknown)"
+                                    : value.ValueTypeFullName
+                            ))
+                    .ToArray();
+
+            string[] directInstanceFields =
+                inspection.Fields
+                    .Where(
+                        value =>
+                            !value.IsStatic &&
+                            !value.IsInherited)
+                    .OrderBy(
+                        value =>
+                            value.Name,
+                        StringComparer.OrdinalIgnoreCase)
+                    .Take(32)
+                    .Select(
+                        value =>
+                            value.Name +
+                            ":" +
+                            (
+                                value.ValueTypeFullName.Length == 0
+                                    ? "(unknown)"
+                                    : value.ValueTypeFullName
+                            ))
+                    .ToArray();
+
+            summaries.Add(
+                typeName +
+                "{properties=[" +
+                (
+                    readableProperties.Length == 0
+                        ? "(none)"
+                        : string.Join(
+                            ", ",
+                            readableProperties)
+                ) +
+                "]; fields=[" +
+                (
+                    directInstanceFields.Length == 0
+                        ? "(none)"
+                        : string.Join(
+                            ", ",
+                            directInstanceFields)
+                ) +
+                "]}");
+        }
+
+        return
+            string.Join(
+                " || ",
+                summaries);
+    }
+
+    private static string FormatGameValue(
+        DCMLGameValue value)
+    {
+        switch (value.Kind)
+        {
+            case DCMLGameValueKind.Null:
+                return "(null)";
+
+            case DCMLGameValueKind.String:
+            case DCMLGameValueKind.Enum:
+                return
+                    value.StringValue ??
+                    "(null)";
+
+            case DCMLGameValueKind.Boolean:
+                return
+                    value.BooleanValue?.ToString() ??
+                    "(null)";
+
+            case DCMLGameValueKind.Integer:
+                return
+                    value.IntegerValue?.ToString() ??
+                    "(null)";
+
+            case DCMLGameValueKind.Number:
+                return
+                    value.NumberValue?.ToString() ??
+                    "(null)";
+
+            case DCMLGameValueKind.Reference:
+                if (value.ReferenceValue is null)
+                {
+                    return "(null-reference)";
+                }
+
+                return
+                    value.ReferenceValue.TypeName +
+                    "#" +
+                    value.ReferenceValue.InstanceId +
+                    ":" +
+                    value.ReferenceValue.Name;
+
+            case DCMLGameValueKind.ReferenceCollection:
+                return
+                    "[" +
+                    string.Join(
+                        ", ",
+                        value.ReferenceValues
+                            .Take(8)
+                            .Select(
+                                reference =>
+                                    reference.TypeName +
+                                    "#" +
+                                    reference.InstanceId +
+                                    ":" +
+                                    reference.Name)) +
+                    (
+                        value.ReferenceValues.Count > 8
+                            ? ", ..."
+                            : string.Empty
+                    ) +
+                    "]";
+
+            case DCMLGameValueKind.Unsupported:
+                return
+                    "<unsupported:" +
+                    (
+                        value.TypeName.Length == 0
+                            ? "unknown"
+                            : value.TypeName
+                    ) +
+                    ">";
+
+            case DCMLGameValueKind.Unavailable:
+                return
+                    "<unavailable:" +
+                    (
+                        value.Diagnostic.Length == 0
+                            ? "no diagnostic"
+                            : value.Diagnostic
+                    ) +
+                    ">";
+
+            default:
+                return
+                    "<" +
+                    value.Kind +
+                    ">";
+        }
+    }
+
+    private void ResetCustomerBaseStateProbe()
+    {
+        _lastCustomerBaseStateProbeComponentCount = 0;
+        _lastCustomerBaseStateProbeFieldCount = 0;
+        _lastCustomerBaseStateProbePropertyCount = 0;
+        _lastCustomerBaseStateProbeValueCount = 0;
+        _lastCustomerBaseStateProbeReferenceCount = 0;
+        _lastCustomerBaseStateProbeScalarCount = 0;
+        _lastCustomerBaseStateProbeNullCount = 0;
+        _lastCustomerBaseStateProbeUnsupportedCount = 0;
+        _lastCustomerBaseStateProbeUnavailableCount = 0;
+        _lastCustomerBaseStateProbeFields = string.Empty;
+        _lastCustomerBaseStateProbeProperties = string.Empty;
+        _lastCustomerBaseRelatedTypeSummary = string.Empty;
+        _lastCustomerBaseStateProbeReferenceTypes = string.Empty;
+        _lastCustomerBaseStateProbeUnsupportedTypes = string.Empty;
+        _lastCustomerBaseStateProbeSample = string.Empty;
+        _lastCustomerBaseStateProbeError = string.Empty;
+
+        _lastCustomerBaseCableLinkCollectionBaseCount = 0;
+        _lastCustomerBaseCableLinkCollectionDeclaredCount = 0;
+        _lastCustomerBaseCableLinkCollectionReferenceCount = 0;
+        _lastCustomerBaseCableLinkCollectionUniqueReferenceCount = 0;
+        _lastCustomerBaseCableLinkCollectionTopologyTargetCount = 0;
+        _lastCustomerBaseCableLinkCollectionTopologyTargetMatchCount = 0;
+        _lastCustomerBaseCableLinkCollectionNonTargetReferenceCount = 0;
+        _lastCustomerBaseCableLinkCollectionSample = string.Empty;
+    }
+
+    private static string FormatHardwareReference(
+        DataCenterHardwareReference? reference)
+    {
+        if (reference is null)
+        {
+            return "(null)";
+        }
+
+        return
+            reference.TypeName +
+            "#" +
+            reference.InstanceId +
+            ":" +
+            reference.Name;
+    }
+
+    private static string FormatNullable(
+        object? value)
+    {
+        return value?.ToString() ?? "(null)";
     }
 
     private void RunObjectDiscovery(
@@ -1333,6 +3732,485 @@ public sealed class TestModule : IDCMLModule
         }
     }
 
+    private void RunGameResourceDiscovery(
+        string sceneName)
+    {
+        if (_gameResourceDiscovery is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<DCMLGameResourceInfo> servers =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.Server",
+                        maxResults:
+                            64));
+
+            IReadOnlyList<DCMLGameResourceInfo> racks =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.Rack",
+                        maxResults:
+                            64));
+
+            IReadOnlyList<DCMLGameResourceInfo> switches =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.NetworkSwitch",
+                        maxResults:
+                            64));
+
+            IReadOnlyList<DCMLGameResourceInfo> routers =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.Router",
+                        maxResults:
+                            64));
+
+            IReadOnlyList<DCMLGameResourceInfo> firewalls =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.Firewall",
+                        maxResults:
+                            64));
+
+            IReadOnlyList<DCMLGameResourceInfo> cables =
+                _gameResourceDiscovery.Find(
+                    new DCMLGameResourceQuery(
+                        componentTypeName:
+                            "Il2Cpp.CableLink",
+                        maxResults:
+                            64));
+
+            DCMLGameResourceInfo[] networkDevices =
+                switches
+                    .Concat(
+                        routers)
+                    .Concat(
+                        firewalls)
+                    .GroupBy(
+                        value =>
+                            value.InstanceId)
+                    .Select(
+                        group =>
+                            group.First())
+                    .OrderBy(
+                        value =>
+                            value.Name,
+                        StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(
+                        value =>
+                            value.InstanceId)
+                    .ToArray();
+
+            _gameResourceDiscoveryRuns++;
+            _lastGameResourceDiscoveryScene =
+                sceneName;
+            _lastGameResourceDiscoveryServerCount =
+                servers.Count;
+            _lastGameResourceDiscoveryRackCount =
+                racks.Count;
+            _lastGameResourceDiscoveryNetworkDeviceCount =
+                networkDevices.Length;
+            _lastGameResourceDiscoveryCableCount =
+                cables.Count;
+            _lastGameResourceDiscoveryError =
+                string.Empty;
+
+            _lastGameResourceDiscoverySample =
+                string.Join(
+                    " || ",
+                    servers
+                        .Select(
+                            value =>
+                                "server:" +
+                                FormatResource(
+                                    value))
+                        .Concat(
+                            racks.Select(
+                                value =>
+                                    "rack:" +
+                                    FormatResource(
+                                        value)))
+                        .Concat(
+                            networkDevices.Select(
+                                value =>
+                                    "network-device:" +
+                                    FormatResource(
+                                        value)))
+                        .Concat(
+                            cables.Select(
+                                value =>
+                                    "cable:" +
+                                    FormatResource(
+                                        value)))
+                        .Take(
+                            16));
+
+            AppendProof(
+                "GameResourceDiscovery");
+
+            _logger?.Info(
+                "Game resource discovery for scene '" +
+                sceneName +
+                "' found server=" +
+                servers.Count +
+                ", rack=" +
+                racks.Count +
+                ", network-device=" +
+                networkDevices.Length +
+                ", cable=" +
+                cables.Count +
+                ".");
+        }
+        catch (Exception exception)
+        {
+            _gameResourceDiscoveryRuns++;
+            _lastGameResourceDiscoveryScene =
+                sceneName;
+            _lastGameResourceDiscoveryServerCount =
+                0;
+            _lastGameResourceDiscoveryRackCount =
+                0;
+            _lastGameResourceDiscoveryNetworkDeviceCount =
+                0;
+            _lastGameResourceDiscoveryCableCount =
+                0;
+            _lastGameResourceDiscoveryError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+            _lastGameResourceDiscoverySample =
+                string.Empty;
+
+            AppendProof(
+                "GameResourceDiscoveryError");
+
+            _logger?.Error(
+                $"Game resource discovery failed after scene '{sceneName}' initialized.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private static string FormatResource(
+        DCMLGameResourceInfo value)
+    {
+        return
+            value.Name +
+            " [" +
+            string.Join(
+                ",",
+                value.ComponentTypeNames.Take(6)) +
+            "] #" +
+            value.InstanceId;
+    }
+
+    private void RunGameTypeInspection(
+        string sceneName)
+    {
+        if (
+            _context is null ||
+            _gameTypeInspector is null
+        )
+        {
+            return;
+        }
+
+        try
+        {
+            DCMLGameTypeInspection[] inspections =
+                InspectedGameTypeNames
+                    .Select(
+                        typeFullName =>
+                            _gameTypeInspector.Inspect(
+                                new DCMLGameTypeInspectionQuery(
+                                    typeFullName,
+                                    includeInheritedMembers:
+                                        true,
+                                    maxMembers:
+                                        4096)))
+                    .Where(
+                        value =>
+                            value is not null)
+                    .Cast<DCMLGameTypeInspection>()
+                    .ToArray();
+
+            _gameTypeInspectionRuns++;
+            _lastGameTypeInspectionScene =
+                sceneName;
+            _lastGameTypeInspectionTypeCount =
+                inspections.Length;
+            _lastGameTypeInspectionMemberCount =
+                inspections.Sum(
+                    value =>
+                        value.TotalMemberCount);
+            _lastGameTypeInspectionAtLimit =
+                string.Join(
+                    ", ",
+                    inspections
+                        .Where(
+                            value =>
+                                value.AtMemberLimit)
+                        .Select(
+                            value =>
+                                value.TypeFullName));
+
+            if (
+                _lastGameTypeInspectionAtLimit.Length == 0
+            )
+            {
+                _lastGameTypeInspectionAtLimit =
+                    "(none)";
+            }
+
+            _lastGameTypeInspectionSummary =
+                string.Join(
+                    " || ",
+                    inspections.Select(
+                        value =>
+                            value.TypeFullName +
+                            ": bases=" +
+                            value.BaseTypeFullNames.Count +
+                            ", interfaces=" +
+                            value.InterfaceFullNames.Count +
+                            ", ctors=" +
+                            value.Constructors.Count +
+                            ", fields=" +
+                            value.Fields.Count +
+                            ", properties=" +
+                            value.Properties.Count +
+                            ", methods=" +
+                            value.Methods.Count +
+                            ", total=" +
+                            value.TotalMemberCount));
+
+            _lastGameTypeInspectionPath =
+                WriteGameTypeInspection(
+                    sceneName,
+                    inspections);
+
+            _lastGameTypeInspectionError =
+                string.Empty;
+
+            AppendProof(
+                "GameTypeInspection");
+
+            _logger?.Info(
+                "Game type inspection for scene '" +
+                sceneName +
+                "' inspected " +
+                inspections.Length +
+                " target type(s) and " +
+                _lastGameTypeInspectionMemberCount +
+                " member(s).");
+        }
+        catch (Exception exception)
+        {
+            _gameTypeInspectionRuns++;
+            _lastGameTypeInspectionScene =
+                sceneName;
+            _lastGameTypeInspectionTypeCount =
+                0;
+            _lastGameTypeInspectionMemberCount =
+                0;
+            _lastGameTypeInspectionAtLimit =
+                string.Empty;
+            _lastGameTypeInspectionPath =
+                string.Empty;
+            _lastGameTypeInspectionSummary =
+                string.Empty;
+            _lastGameTypeInspectionError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            AppendProof(
+                "GameTypeInspectionError");
+
+            _logger?.Error(
+                $"Game type inspection failed after scene '{sceneName}' initialized.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private string WriteGameTypeInspection(
+        string sceneName,
+        IReadOnlyList<DCMLGameTypeInspection> inspections)
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException(
+                "The module context is unavailable.");
+        }
+
+        Directory.CreateDirectory(
+            _context.DataDirectory);
+
+        string path =
+            Path.Combine(
+                _context.DataDirectory,
+                "DCML.GameTypeInspection." +
+                MakeSafeFileName(
+                    sceneName) +
+                ".log");
+
+        var lines =
+            new List<string>
+            {
+                "DCML Game Type Inspection",
+                $"UTC: {DateTime.UtcNow:O}",
+                $"Scene: {sceneName}",
+                $"RequestedTypeCount: {InspectedGameTypeNames.Length}",
+                $"FoundTypeCount: {inspections.Count}",
+                string.Empty
+            };
+
+        foreach (
+            string requestedTypeName in
+            InspectedGameTypeNames)
+        {
+            DCMLGameTypeInspection? inspection =
+                inspections.FirstOrDefault(
+                    value =>
+                        string.Equals(
+                            value.TypeFullName,
+                            requestedTypeName,
+                            StringComparison.OrdinalIgnoreCase));
+
+            lines.Add(
+                "============================================================");
+
+            lines.Add(
+                requestedTypeName);
+
+            if (inspection is null)
+            {
+                lines.Add(
+                    "Status: NOT FOUND");
+
+                lines.Add(
+                    string.Empty);
+
+                continue;
+            }
+
+            lines.Add(
+                "Status: FOUND");
+
+            lines.Add(
+                $"Assembly: {inspection.AssemblyName}");
+
+            lines.Add(
+                $"BaseTypes: {FormatNameList(inspection.BaseTypeFullNames)}");
+
+            lines.Add(
+                $"Interfaces: {FormatNameList(inspection.InterfaceFullNames)}");
+
+            lines.Add(
+                $"TotalMemberCount: {inspection.TotalMemberCount}");
+
+            lines.Add(
+                $"ReturnedMemberCount: {inspection.Members.Count}");
+
+            lines.Add(
+                $"AtMemberLimit: {inspection.AtMemberLimit}");
+
+            lines.Add(
+                string.Empty);
+
+            AppendMemberSection(
+                lines,
+                "CONSTRUCTORS",
+                inspection.Constructors);
+
+            AppendMemberSection(
+                lines,
+                "FIELDS",
+                inspection.Fields);
+
+            AppendMemberSection(
+                lines,
+                "PROPERTIES",
+                inspection.Properties);
+
+            AppendMemberSection(
+                lines,
+                "METHODS",
+                inspection.Methods);
+        }
+
+        File.WriteAllLines(
+            path,
+            lines);
+
+        return path;
+    }
+
+    private static void AppendMemberSection(
+        ICollection<string> lines,
+        string title,
+        IReadOnlyList<DCMLGameTypeMemberInfo> members)
+    {
+        lines.Add(
+            title +
+            " (" +
+            members.Count +
+            ")");
+
+        if (members.Count == 0)
+        {
+            lines.Add(
+                "  (none)");
+
+            lines.Add(
+                string.Empty);
+
+            return;
+        }
+
+        foreach (
+            DCMLGameTypeMemberInfo member in
+            members)
+        {
+            lines.Add(
+                "  " +
+                (
+                    member.IsInherited
+                        ? "[inherited from " +
+                            member.DeclaringTypeFullName +
+                            "] "
+                        : string.Empty
+                ) +
+                member.Signature);
+        }
+
+        lines.Add(
+            string.Empty);
+    }
+
+    private static string FormatNameList(
+        IReadOnlyList<string> values)
+    {
+        return
+            values.Count == 0
+                ? "(none)"
+                : string.Join(
+                    " -> ",
+                    values);
+    }
+
     private void AppendProof(
         string stage)
     {
@@ -1371,7 +4249,10 @@ public sealed class TestModule : IDCMLModule
                     $"ConfigurationPath: {_configuration.ConfigurationPath}",
                     $"ConfigurationExists: {_configuration.Exists}",
                     $"LaunchCount: {_settings.LaunchCount}",
-                    $"LastLifecycleStage: {_settings.LastLifecycleStage}");
+                    $"LastLifecycleStage: {_settings.LastLifecycleStage}",
+                    $"EnableAutomaticSceneDiagnostics: {_settings.EnableAutomaticSceneDiagnostics}",
+                    $"SceneDiagnosticDelayFrames: {_settings.SceneDiagnosticDelayFrames}",
+                    $"EnableHeavyAutomaticSceneDiagnostics: {_settings.EnableHeavyAutomaticSceneDiagnostics}");
 
         var eventLines =
             string.Join(
@@ -1389,7 +4270,15 @@ public sealed class TestModule : IDCMLModule
                     $"CurrentSceneName: {_gameLifecycle.CurrentSceneName}",
                     $"CurrentSceneStage: {_gameLifecycle.CurrentSceneStage}",
                     $"SceneEventsReceived: {_sceneEventsReceived}",
-                    $"LastSceneEvent: {FormatLastSceneEvent()}");
+                    $"LastSceneEvent: {FormatLastSceneEvent()}",
+                    $"AutomaticSceneDiagnosticPending: {_automaticSceneDiagnosticPending}",
+                    $"AutomaticSceneDiagnosticScene: {_automaticSceneDiagnosticScene}",
+                    $"AutomaticSceneDiagnosticFramesRemaining: {_automaticSceneDiagnosticFramesRemaining}",
+                    $"AutomaticSceneDiagnosticStage: {_automaticSceneDiagnosticStage}",
+                    $"AutomaticSceneDiagnosticSchedules: {_automaticSceneDiagnosticSchedules}",
+                    $"AutomaticSceneDiagnosticCompletions: {_automaticSceneDiagnosticCompletions}",
+                    $"AutomaticSceneDiagnosticCancellations: {_automaticSceneDiagnosticCancellations}",
+                    $"AutomaticSceneDiagnosticLastError: {_automaticSceneDiagnosticLastError}");
 
         var discoveryLines =
             string.Join(
@@ -1447,6 +4336,144 @@ public sealed class TestModule : IDCMLModule
                 $"LastGameTypeCatalogError: {_lastGameTypeCatalogError}",
                 $"LastGameTypeCatalogSample: {_lastGameTypeCatalogSample}");
 
+        var gameResourceDiscoveryLines =
+            string.Join(
+                Environment.NewLine,
+                $"GameResourceDiscoveryRuns: {_gameResourceDiscoveryRuns}",
+                $"LastGameResourceDiscoveryScene: {_lastGameResourceDiscoveryScene}",
+                $"LastGameResourceDiscoveryServerCount: {_lastGameResourceDiscoveryServerCount}",
+                $"LastGameResourceDiscoveryRackCount: {_lastGameResourceDiscoveryRackCount}",
+                $"LastGameResourceDiscoveryNetworkDeviceCount: {_lastGameResourceDiscoveryNetworkDeviceCount}",
+                $"LastGameResourceDiscoveryCableCount: {_lastGameResourceDiscoveryCableCount}",
+                $"LastGameResourceDiscoveryError: {_lastGameResourceDiscoveryError}",
+                $"LastGameResourceDiscoverySample: {_lastGameResourceDiscoverySample}");
+
+        var gameTypeInspectionLines =
+            string.Join(
+                Environment.NewLine,
+                $"GameTypeInspectionRuns: {_gameTypeInspectionRuns}",
+                $"LastGameTypeInspectionScene: {_lastGameTypeInspectionScene}",
+                $"LastGameTypeInspectionTypeCount: {_lastGameTypeInspectionTypeCount}",
+                $"LastGameTypeInspectionMemberCount: {_lastGameTypeInspectionMemberCount}",
+                $"LastGameTypeInspectionAtLimit: {_lastGameTypeInspectionAtLimit}",
+                $"LastGameTypeInspectionPath: {_lastGameTypeInspectionPath}",
+                $"LastGameTypeInspectionError: {_lastGameTypeInspectionError}",
+                $"LastGameTypeInspectionSummary: {_lastGameTypeInspectionSummary}");
+
+        var gameThreadLines =
+            string.Join(
+                Environment.NewLine,
+                $"GameThreadProbeRuns: {_gameThreadProbeRuns}",
+                $"LastGameThreadInitializeWasMainThread: {_lastGameThreadInitializeWasMainThread}",
+                $"LastGameThreadBackgroundWasMainThread: {_lastGameThreadBackgroundWasMainThread}",
+                $"LastGameThreadPostWasMainThread: {_lastGameThreadPostWasMainThread}",
+                $"LastGameThreadInvokeWasMainThread: {_lastGameThreadInvokeWasMainThread}",
+                $"LastGameThreadPostCount: {_lastGameThreadPostCount}",
+                $"LastGameThreadInvokeCount: {_lastGameThreadInvokeCount}",
+                $"LastGameThreadError: {_lastGameThreadError}");
+
+        var hardwareSnapshotLines =
+            string.Join(
+                Environment.NewLine,
+                $"HardwareSnapshotRuns: {_hardwareSnapshotRuns}",
+                $"LastHardwareSnapshotScene: {_lastHardwareSnapshotScene}",
+                $"LastHardwareSnapshotServerCount: {_lastHardwareSnapshotServerCount}",
+                $"LastHardwareSnapshotRackCount: {_lastHardwareSnapshotRackCount}",
+                $"LastHardwareSnapshotNetworkDeviceCount: {_lastHardwareSnapshotNetworkDeviceCount}",
+                $"LastHardwareSnapshotSfpCount: {_lastHardwareSnapshotSfpCount}",
+                $"LastHardwareSnapshotCableCount: {_lastHardwareSnapshotCableCount}",
+                $"LastHardwareSnapshotServerDefinitionCount: {_lastHardwareSnapshotServerDefinitionCount}",
+                $"LastHardwareSnapshotServerInstanceCount: {_lastHardwareSnapshotServerInstanceCount}",
+                $"LastHardwareSnapshotRackDefinitionCount: {_lastHardwareSnapshotRackDefinitionCount}",
+                $"LastHardwareSnapshotRackInstanceCount: {_lastHardwareSnapshotRackInstanceCount}",
+                $"LastHardwareSnapshotNetworkDeviceDefinitionCount: {_lastHardwareSnapshotNetworkDeviceDefinitionCount}",
+                $"LastHardwareSnapshotNetworkDeviceInstanceCount: {_lastHardwareSnapshotNetworkDeviceInstanceCount}",
+                $"LastHardwareSnapshotSfpDefinitionCount: {_lastHardwareSnapshotSfpDefinitionCount}",
+                $"LastHardwareSnapshotSfpInstanceCount: {_lastHardwareSnapshotSfpInstanceCount}",
+                $"LastHardwareSnapshotCableDefinitionCount: {_lastHardwareSnapshotCableDefinitionCount}",
+                $"LastHardwareSnapshotCableInstanceCount: {_lastHardwareSnapshotCableInstanceCount}",
+                $"LastHardwareSnapshotSfpLinkedCount: {_lastHardwareSnapshotSfpLinkedCount}",
+                $"LastHardwareSnapshotCableParentServerCount: {_lastHardwareSnapshotCableParentServerCount}",
+                $"LastHardwareSnapshotCableParentSwitchCount: {_lastHardwareSnapshotCableParentSwitchCount}",
+                $"LastHardwareSnapshotCableParentPatchPanelCount: {_lastHardwareSnapshotCableParentPatchPanelCount}",
+                $"LastHardwareSnapshotCableParentInternetCount: {_lastHardwareSnapshotCableParentInternetCount}",
+                $"LastHardwareSnapshotCableInsertedSfpCount: {_lastHardwareSnapshotCableInsertedSfpCount}",
+                $"LastHardwareRelationshipSample: {_lastHardwareRelationshipSample}",
+                "LastHardwareTopologyIdentityMode: ComponentInstanceId",
+                $"LastHardwareTopologyNodeCount: {_lastHardwareTopologyNodeCount}",
+                $"LastHardwareTopologyEdgeCount: {_lastHardwareTopologyEdgeCount}",
+                $"LastHardwareTopologyResolvedEdgeCount: {_lastHardwareTopologyResolvedEdgeCount}",
+                $"LastHardwareTopologyUnresolvedEdgeCount: {_lastHardwareTopologyUnresolvedEdgeCount}",
+                $"LastHardwareTopologyCableSearchPages: {_lastHardwareTopologyCableSearchPages}",
+                $"LastHardwareTopologyCableCandidatesScanned: {_lastHardwareTopologyCableCandidatesScanned}",
+                $"LastHardwareTopologyCableSearchExhausted: {_lastHardwareTopologyCableSearchExhausted}",
+                $"LastHardwareTopologyNonSceneSearchPages: {_lastHardwareTopologyNonSceneSearchPages}",
+                $"LastHardwareTopologyNonSceneCandidatesScanned: {_lastHardwareTopologyNonSceneCandidatesScanned}",
+                $"LastHardwareTopologyNonSceneTargetMatchCount: {_lastHardwareTopologyNonSceneTargetMatchCount}",
+                $"LastHardwareTopologyNonSceneSearchExhausted: {_lastHardwareTopologyNonSceneSearchExhausted}",
+                $"LastHardwareTopologyTargetCableDetailRequestedCount: {_lastHardwareTopologyTargetCableDetailRequestedCount}",
+                $"LastHardwareTopologyTargetCableDetailFoundCount: {_lastHardwareTopologyTargetCableDetailFoundCount}",
+                $"LastHardwareTopologyTargetCableParentServerCount: {_lastHardwareTopologyTargetCableParentServerCount}",
+                $"LastHardwareTopologyTargetCableParentSwitchCount: {_lastHardwareTopologyTargetCableParentSwitchCount}",
+                $"LastHardwareTopologyTargetCableParentPatchPanelCount: {_lastHardwareTopologyTargetCableParentPatchPanelCount}",
+                $"LastHardwareTopologyTargetCableParentInternetCount: {_lastHardwareTopologyTargetCableParentInternetCount}",
+                $"LastHardwareTopologyTargetCableInsertedSfpCount: {_lastHardwareTopologyTargetCableInsertedSfpCount}",
+                $"LastHardwareTopologyTargetCableSfpPortCount: {_lastHardwareTopologyTargetCableSfpPortCount}",
+                $"LastHardwareTopologyTargetCableEndpointCount: {_lastHardwareTopologyTargetCableEndpointCount}",
+                $"LastHardwareTopologyTargetHierarchyTargetCount: {_lastHardwareTopologyTargetHierarchyTargetCount}",
+                $"LastHardwareTopologyTargetHierarchyMatchedTargetCount: {_lastHardwareTopologyTargetHierarchyMatchedTargetCount}",
+                $"LastHardwareTopologyTargetHierarchyObjectCount: {_lastHardwareTopologyTargetHierarchyObjectCount}",
+                $"LastHardwareTopologyTargetHierarchyServerAncestorCount: {_lastHardwareTopologyTargetHierarchyServerAncestorCount}",
+                $"LastHardwareTopologyTargetHierarchyNetworkDeviceAncestorCount: {_lastHardwareTopologyTargetHierarchyNetworkDeviceAncestorCount}",
+                $"LastHardwareTopologyTargetHierarchyPatchPanelAncestorCount: {_lastHardwareTopologyTargetHierarchyPatchPanelAncestorCount}",
+                $"LastHardwareTopologyTargetHierarchyInternetAncestorCount: {_lastHardwareTopologyTargetHierarchyInternetAncestorCount}",
+                $"LastHardwareTopologyTargetHierarchyRackAncestorCount: {_lastHardwareTopologyTargetHierarchyRackAncestorCount}",
+                $"LastHardwareTopologyTargetHierarchySample: {_lastHardwareTopologyTargetHierarchySample}",
+                $"LastHardwareTopologyTargetHierarchyError: {_lastHardwareTopologyTargetHierarchyError}",
+                $"LastHardwareTopologyCustomerBaseRootCount: {_lastHardwareTopologyCustomerBaseRootCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeObjectCount: {_lastHardwareTopologyCustomerBaseSubtreeObjectCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeIl2CppTypeCount: {_lastHardwareTopologyCustomerBaseSubtreeIl2CppTypeCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeNetworkSwitchCount: {_lastHardwareTopologyCustomerBaseSubtreeNetworkSwitchCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeRouterCount: {_lastHardwareTopologyCustomerBaseSubtreeRouterCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeFirewallCount: {_lastHardwareTopologyCustomerBaseSubtreeFirewallCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeServerCount: {_lastHardwareTopologyCustomerBaseSubtreeServerCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreePatchPanelCount: {_lastHardwareTopologyCustomerBaseSubtreePatchPanelCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeInternetCount: {_lastHardwareTopologyCustomerBaseSubtreeInternetCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeRackCount: {_lastHardwareTopologyCustomerBaseSubtreeRackCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeCableLinkCount: {_lastHardwareTopologyCustomerBaseSubtreeCableLinkCount}",
+                $"LastHardwareTopologyCustomerBaseSubtreeAtResultLimit: {_lastHardwareTopologyCustomerBaseSubtreeAtResultLimit}",
+                $"LastHardwareTopologyCustomerBaseSubtreeTypes: {_lastHardwareTopologyCustomerBaseSubtreeTypes}",
+                $"LastHardwareTopologyCustomerBaseSubtreeSample: {_lastHardwareTopologyCustomerBaseSubtreeSample}",
+                $"LastHardwareTopologyCustomerBaseSubtreeError: {_lastHardwareTopologyCustomerBaseSubtreeError}",
+                $"LastCustomerBaseStateProbeComponentCount: {_lastCustomerBaseStateProbeComponentCount}",
+                $"LastCustomerBaseStateProbeFieldCount: {_lastCustomerBaseStateProbeFieldCount}",
+                $"LastCustomerBaseStateProbePropertyCount: {_lastCustomerBaseStateProbePropertyCount}",
+                $"LastCustomerBaseStateProbeValueCount: {_lastCustomerBaseStateProbeValueCount}",
+                $"LastCustomerBaseStateProbeReferenceCount: {_lastCustomerBaseStateProbeReferenceCount}",
+                $"LastCustomerBaseStateProbeScalarCount: {_lastCustomerBaseStateProbeScalarCount}",
+                $"LastCustomerBaseStateProbeNullCount: {_lastCustomerBaseStateProbeNullCount}",
+                $"LastCustomerBaseStateProbeUnsupportedCount: {_lastCustomerBaseStateProbeUnsupportedCount}",
+                $"LastCustomerBaseStateProbeUnavailableCount: {_lastCustomerBaseStateProbeUnavailableCount}",
+                $"LastCustomerBaseStateProbeFields: {_lastCustomerBaseStateProbeFields}",
+                $"LastCustomerBaseStateProbeProperties: {_lastCustomerBaseStateProbeProperties}",
+                $"LastCustomerBaseRelatedTypeSummary: {_lastCustomerBaseRelatedTypeSummary}",
+                $"LastCustomerBaseStateProbeReferenceTypes: {_lastCustomerBaseStateProbeReferenceTypes}",
+                $"LastCustomerBaseStateProbeUnsupportedTypes: {_lastCustomerBaseStateProbeUnsupportedTypes}",
+                $"LastCustomerBaseStateProbeSample: {_lastCustomerBaseStateProbeSample}",
+                $"LastCustomerBaseStateProbeError: {_lastCustomerBaseStateProbeError}",
+                $"LastCustomerBaseCableLinkCollectionBaseCount: {_lastCustomerBaseCableLinkCollectionBaseCount}",
+                $"LastCustomerBaseCableLinkCollectionDeclaredCount: {_lastCustomerBaseCableLinkCollectionDeclaredCount}",
+                $"LastCustomerBaseCableLinkCollectionReferenceCount: {_lastCustomerBaseCableLinkCollectionReferenceCount}",
+                $"LastCustomerBaseCableLinkCollectionUniqueReferenceCount: {_lastCustomerBaseCableLinkCollectionUniqueReferenceCount}",
+                $"LastCustomerBaseCableLinkCollectionTopologyTargetCount: {_lastCustomerBaseCableLinkCollectionTopologyTargetCount}",
+                $"LastCustomerBaseCableLinkCollectionTopologyTargetMatchCount: {_lastCustomerBaseCableLinkCollectionTopologyTargetMatchCount}",
+                $"LastCustomerBaseCableLinkCollectionNonTargetReferenceCount: {_lastCustomerBaseCableLinkCollectionNonTargetReferenceCount}",
+                $"LastCustomerBaseCableLinkCollectionSample: {_lastCustomerBaseCableLinkCollectionSample}",
+                $"LastHardwareTopologySample: {_lastHardwareTopologySample}",
+                $"LastHardwareTopologyError: {_lastHardwareTopologyError}",
+                $"LastHardwareSnapshotError: {_lastHardwareSnapshotError}",
+                $"LastHardwareSnapshotSample: {_lastHardwareSnapshotSample}");
+
         var entry =
             string.Join(
                 Environment.NewLine,
@@ -1463,6 +4490,10 @@ public sealed class TestModule : IDCMLModule
                 targetedSemanticLines,
                 componentInventoryLines,
                 gameTypeCatalogLines,
+                gameResourceDiscoveryLines,
+                gameTypeInspectionLines,
+                gameThreadLines,
+                hardwareSnapshotLines,
                 string.Empty,
                 string.Empty);
 
@@ -1530,5 +4561,12 @@ public sealed class TestModule : IDCMLModule
 
         public string LastDCMLVersion { get; set; } =
             string.Empty;
+
+        public bool EnableAutomaticSceneDiagnostics { get; set; }
+
+        public int SceneDiagnosticDelayFrames { get; set; } =
+            DefaultAutomaticSceneDiagnosticDelayFrames;
+
+        public bool EnableHeavyAutomaticSceneDiagnostics { get; set; }
     }
 }

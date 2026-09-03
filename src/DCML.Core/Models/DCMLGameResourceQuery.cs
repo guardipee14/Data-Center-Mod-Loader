@@ -1,29 +1,21 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace DCML.Core.Models;
 
-public sealed class DCMLGameObjectQuery
+public sealed class DCMLGameResourceQuery
 {
-    private readonly IReadOnlyList<int> _instanceIds;
-    private readonly IReadOnlyList<int> _parentInstanceIds;
     public const int DefaultMaxResults =
         256;
 
     public const int MaximumMaxResults =
         16384;
 
-    public DCMLGameObjectQuery(
+    public DCMLGameResourceQuery(
         string? nameContains = null,
-        string? sceneName = null,
         string? componentTypeName = null,
-        bool includeInactive = true,
-        int maxResults = DefaultMaxResults,
         string? componentTypeNamePrefix = null,
-        int skipResults = 0,
-        IEnumerable<int>? instanceIds = null,
-        IEnumerable<int>? parentInstanceIds = null)
+        int maxResults = DefaultMaxResults,
+        int skipResults = 0)
     {
         if (
             maxResults <= 0 ||
@@ -48,10 +40,6 @@ public sealed class DCMLGameObjectQuery
             Normalize(
                 nameContains);
 
-        SceneName =
-            Normalize(
-                sceneName);
-
         ComponentTypeName =
             Normalize(
                 componentTypeName);
@@ -60,49 +48,22 @@ public sealed class DCMLGameObjectQuery
             Normalize(
                 componentTypeNamePrefix);
 
-        IncludeInactive =
-            includeInactive;
-
         MaxResults =
             maxResults;
 
         SkipResults =
             skipResults;
-
-        _instanceIds =
-            instanceIds is null
-                ? Array.Empty<int>()
-                : instanceIds
-                    .Distinct()
-                    .ToArray();
-
-        _parentInstanceIds =
-            parentInstanceIds is null
-                ? Array.Empty<int>()
-                : parentInstanceIds
-                    .Distinct()
-                    .ToArray();
     }
 
     public string NameContains { get; }
-
-    public string SceneName { get; }
 
     public string ComponentTypeName { get; }
 
     public string ComponentTypeNamePrefix { get; }
 
-    public bool IncludeInactive { get; }
-
     public int MaxResults { get; }
 
     public int SkipResults { get; }
-
-    public IReadOnlyList<int> InstanceIds =>
-        _instanceIds;
-
-    public IReadOnlyList<int> ParentInstanceIds =>
-        _parentInstanceIds;
 
     private static string Normalize(
         string? value)

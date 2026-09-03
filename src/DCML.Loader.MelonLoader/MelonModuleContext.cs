@@ -17,7 +17,11 @@ public sealed class MelonModuleContext : IDCMLModuleContext
         IDCMLEventBus eventBus,
         IDCMLGameLifecycle gameLifecycle,
         IDCMLGameObjectDiscovery gameObjectDiscovery,
-        IDCMLGameTypeCatalog gameTypeCatalog)
+        IDCMLGameTypeCatalog gameTypeCatalog,
+        IDCMLGameResourceDiscovery gameResourceDiscovery,
+        IDCMLGameTypeInspector gameTypeInspector,
+        IDCMLGameThread gameThread,
+        IDCMLGameComponentStateReader gameComponentStateReader)
     {
         if (string.IsNullOrWhiteSpace(moduleId))
         {
@@ -71,6 +75,30 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 nameof(gameTypeCatalog));
         }
 
+        if (gameResourceDiscovery is null)
+        {
+            throw new ArgumentNullException(
+                nameof(gameResourceDiscovery));
+        }
+
+        if (gameTypeInspector is null)
+        {
+            throw new ArgumentNullException(
+                nameof(gameTypeInspector));
+        }
+
+        if (gameThread is null)
+        {
+            throw new ArgumentNullException(
+                nameof(gameThread));
+        }
+
+        if (gameComponentStateReader is null)
+        {
+            throw new ArgumentNullException(
+                nameof(gameComponentStateReader));
+        }
+
         ModuleDirectory =
             Path.GetFullPath(
                 moduleDirectory);
@@ -112,7 +140,11 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                     DCMLRuntimeCapabilities.Events,
                     DCMLRuntimeCapabilities.GameSceneLifecycle,
                     DCMLRuntimeCapabilities.GameObjectDiscovery,
-                    DCMLRuntimeCapabilities.GameTypeCatalog
+                    DCMLRuntimeCapabilities.GameTypeCatalog,
+                    DCMLRuntimeCapabilities.GameResourceDiscovery,
+                    DCMLRuntimeCapabilities.GameTypeInspection,
+                    DCMLRuntimeCapabilities.GameMainThread,
+                    DCMLRuntimeCapabilities.GameComponentState
                 });
 
         Services =
@@ -144,6 +176,22 @@ public sealed class MelonModuleContext : IDCMLModuleContext
                 (
                     typeof(IDCMLGameTypeCatalog),
                     gameTypeCatalog
+                ),
+                (
+                    typeof(IDCMLGameResourceDiscovery),
+                    gameResourceDiscovery
+                ),
+                (
+                    typeof(IDCMLGameTypeInspector),
+                    gameTypeInspector
+                ),
+                (
+                    typeof(IDCMLGameThread),
+                    gameThread
+                ),
+                (
+                    typeof(IDCMLGameComponentStateReader),
+                    gameComponentStateReader
                 ));
     }
 

@@ -4,19 +4,15 @@ using System.Linq;
 
 namespace DCML.Core.Models;
 
-public sealed class DCMLGameObjectInfo
+public sealed class DCMLGameResourceInfo
 {
     private readonly IReadOnlyList<string>
         _componentTypeNames;
 
-    public DCMLGameObjectInfo(
+    public DCMLGameResourceInfo(
         int instanceId,
         string? name,
-        string? sceneName,
-        string? hierarchyPath,
-        bool activeInHierarchy,
-        IEnumerable<string>? componentTypeNames,
-        int? parentInstanceId = null)
+        IEnumerable<string>? componentTypeNames)
     {
         InstanceId =
             instanceId;
@@ -24,20 +20,6 @@ public sealed class DCMLGameObjectInfo
         Name =
             name ??
             string.Empty;
-
-        SceneName =
-            sceneName ??
-            string.Empty;
-
-        HierarchyPath =
-            hierarchyPath ??
-            string.Empty;
-
-        ActiveInHierarchy =
-            activeInHierarchy;
-
-        ParentInstanceId =
-            parentInstanceId;
 
         _componentTypeNames =
             componentTypeNames is null
@@ -62,14 +44,6 @@ public sealed class DCMLGameObjectInfo
     public int InstanceId { get; }
 
     public string Name { get; }
-
-    public string SceneName { get; }
-
-    public string HierarchyPath { get; }
-
-    public bool ActiveInHierarchy { get; }
-
-    public int? ParentInstanceId { get; }
 
     public IReadOnlyList<string> ComponentTypeNames =>
         _componentTypeNames;

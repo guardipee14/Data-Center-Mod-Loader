@@ -21,13 +21,25 @@ public sealed class MelonModuleContextFactory :
 
     private readonly IDCMLGameTypeCatalog _gameTypeCatalog;
 
+    private readonly IDCMLGameResourceDiscovery _gameResourceDiscovery;
+
+    private readonly IDCMLGameTypeInspector _gameTypeInspector;
+
+    private readonly IDCMLGameThread _gameThread;
+
+    private readonly IDCMLGameComponentStateReader _gameComponentStateReader;
+
     public MelonModuleContextFactory(
         string dataRoot,
         string gameRoot,
         IDCMLEventBus eventBus,
         IDCMLGameLifecycle gameLifecycle,
         IDCMLGameObjectDiscovery gameObjectDiscovery,
-        IDCMLGameTypeCatalog gameTypeCatalog)
+        IDCMLGameTypeCatalog gameTypeCatalog,
+        IDCMLGameResourceDiscovery gameResourceDiscovery,
+        IDCMLGameTypeInspector gameTypeInspector,
+        IDCMLGameThread gameThread,
+        IDCMLGameComponentStateReader gameComponentStateReader)
     {
         if (string.IsNullOrWhiteSpace(dataRoot))
         {
@@ -62,6 +74,26 @@ public sealed class MelonModuleContextFactory :
             gameTypeCatalog ??
             throw new ArgumentNullException(
                 nameof(gameTypeCatalog));
+
+        _gameResourceDiscovery =
+            gameResourceDiscovery ??
+            throw new ArgumentNullException(
+                nameof(gameResourceDiscovery));
+
+        _gameTypeInspector =
+            gameTypeInspector ??
+            throw new ArgumentNullException(
+                nameof(gameTypeInspector));
+
+        _gameThread =
+            gameThread ??
+            throw new ArgumentNullException(
+                nameof(gameThread));
+
+        _gameComponentStateReader =
+            gameComponentStateReader ??
+            throw new ArgumentNullException(
+                nameof(gameComponentStateReader));
 
         _dataRoot =
             Path.GetFullPath(
@@ -103,7 +135,11 @@ public sealed class MelonModuleContextFactory :
                 _eventBus,
                 _gameLifecycle,
                 _gameObjectDiscovery,
-                _gameTypeCatalog);
+                _gameTypeCatalog,
+                _gameResourceDiscovery,
+                _gameTypeInspector,
+                _gameThread,
+                _gameComponentStateReader);
     }
 
     private static string CreateSafeDirectoryName(

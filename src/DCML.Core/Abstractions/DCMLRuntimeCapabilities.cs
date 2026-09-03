@@ -22,4 +22,16 @@ public static class DCMLRuntimeCapabilities
 
     public const string GameTypeCatalog =
         "dcml.game.type-catalog";
+
+    public const string GameResourceDiscovery =
+        "dcml.game.resource-discovery";
+
+    public const string GameTypeInspection =
+        "dcml.game.type-inspection";
+
+    public const string GameMainThread =
+        "dcml.game.main-thread";
+
+    public const string GameComponentState =
+        "dcml.game.component-state";
 }

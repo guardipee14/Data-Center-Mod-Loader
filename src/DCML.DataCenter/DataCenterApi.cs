@@ -8,7 +8,9 @@ public sealed class DataCenterApi
 {
     private DataCenterApi(
         IDataCenterEntityDiscovery entities,
-        IDataCenterComponentCatalog components)
+        IDataCenterComponentCatalog components,
+        IDataCenterHardwareSnapshots? hardware,
+        IDataCenterHardwareTopology? topology)
     {
         Entities =
             entities ??
@@ -19,11 +21,18 @@ public sealed class DataCenterApi
             components ??
             throw new ArgumentNullException(
                 nameof(components));
+
+        Hardware = hardware;
+        Topology = topology;
     }
 
     public IDataCenterEntityDiscovery Entities { get; }
 
     public IDataCenterComponentCatalog Components { get; }
+
+    public IDataCenterHardwareSnapshots? Hardware { get; }
+
+    public IDataCenterHardwareTopology? Topology { get; }
 
     public static DataCenterApi Create(
         IDCMLModuleContext context)
@@ -50,12 +59,29 @@ public sealed class DataCenterApi
                 typeof(IDCMLGameTypeCatalog))
             as IDCMLGameTypeCatalog;
 
+        IDCMLGameComponentStateReader? componentStateReader =
+            context.Services.GetService(
+                typeof(IDCMLGameComponentStateReader))
+            as IDCMLGameComponentStateReader;
+
+        IDataCenterHardwareSnapshots? hardware =
+            componentStateReader is null
+                ? null
+                : new DataCenterHardwareSnapshots(
+                    componentStateReader);
+
         return
             new DataCenterApi(
                 new DataCenterEntityDiscovery(
                     gameObjectDiscovery,
                     gameTypeCatalog),
                 new DataCenterComponentCatalog(
-                    gameObjectDiscovery));
+                    gameObjectDiscovery),
+                hardware,
+                hardware is null
+                    ? null
+                    : new DataCenterHardwareTopology(
+                        hardware,
+                        componentStateReader));
     }
 }

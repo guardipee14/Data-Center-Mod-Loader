@@ -21,6 +21,14 @@ namespace DCML.Loader.MelonLoader
 
         private MelonGameTypeCatalog _gameTypeCatalog;
 
+        private MelonGameResourceDiscovery _gameResourceDiscovery;
+
+        private MelonGameTypeInspector _gameTypeInspector;
+
+        private DCMLGameThreadDispatcher _gameThread;
+
+        private MelonGameComponentStateReader _gameComponentStateReader;
+
         public override void OnInitializeMelon()
         {
             try
@@ -31,6 +39,27 @@ namespace DCML.Loader.MelonLoader
             {
                 LoggerInstance.Error(
                     "[DCML] Host initialization failed.");
+
+                LoggerInstance.Error(
+                    exception.ToString());
+            }
+        }
+
+        public override void OnUpdate()
+        {
+            if (_gameThread == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _gameThread.Drain();
+            }
+            catch (Exception exception)
+            {
+                LoggerInstance.Error(
+                    "[DCML] Game-thread dispatch failed.");
 
                 LoggerInstance.Error(
                     exception.ToString());
@@ -168,6 +197,27 @@ namespace DCML.Loader.MelonLoader
             _gameTypeCatalog =
                 new MelonGameTypeCatalog();
 
+            _gameResourceDiscovery =
+                new MelonGameResourceDiscovery();
+
+            _gameTypeInspector =
+                new MelonGameTypeInspector();
+
+            _gameThread =
+                new DCMLGameThreadDispatcher(
+                    exception =>
+                    {
+                        LoggerInstance.Error(
+                            "[DCML] A posted game-thread callback failed.");
+
+                        LoggerInstance.Error(
+                            exception.ToString());
+                    });
+
+            _gameComponentStateReader =
+                new MelonGameComponentStateReader(
+                    _gameThread);
+
             _runtime =
                 new DCMLModuleRuntime(
                     new MelonModuleActivator(),
@@ -177,7 +227,11 @@ namespace DCML.Loader.MelonLoader
                         _eventBus,
                         _gameLifecycle,
                         _gameObjectDiscovery,
-                        _gameTypeCatalog));
+                        _gameTypeCatalog,
+                        _gameResourceDiscovery,
+                        _gameTypeInspector,
+                        _gameThread,
+                        _gameComponentStateReader));
 
             DCMLModuleRuntimeResult startResult =
                 _runtime.Start(

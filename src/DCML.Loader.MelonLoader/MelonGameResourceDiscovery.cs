@@ -8,8 +8,8 @@ using DCML.Core.Models;
 
 namespace DCML.Loader.MelonLoader;
 
-internal sealed class MelonGameObjectDiscovery :
-    IDCMLGameObjectDiscovery
+internal sealed class MelonGameResourceDiscovery :
+    IDCMLGameResourceDiscovery
 {
     private readonly Lazy<UnityReflection>
         _unityReflection =
@@ -17,8 +17,8 @@ internal sealed class MelonGameObjectDiscovery :
                 UnityReflection.Create,
                 true);
 
-    public IReadOnlyList<DCMLGameObjectInfo> Find(
-        DCMLGameObjectQuery query)
+    public IReadOnlyList<DCMLGameResourceInfo> Find(
+        DCMLGameResourceQuery query)
     {
         if (query is null)
         {
@@ -30,80 +30,19 @@ internal sealed class MelonGameObjectDiscovery :
             _unityReflection.Value;
 
         var matches =
-            new List<DCMLGameObjectInfo>();
-
-        HashSet<int>? requestedInstanceIds =
-            query.InstanceIds.Count == 0
-                ? null
-                : new HashSet<int>(
-                    query.InstanceIds);
-
-        HashSet<int>? requestedParentInstanceIds =
-            query.ParentInstanceIds.Count == 0
-                ? null
-                : new HashSet<int>(
-                    query.ParentInstanceIds);
+            new List<DCMLGameResourceInfo>();
 
         foreach (
             object gameObject in
             unity.FindAllGameObjects()
         )
         {
-            DCMLGameObjectInfo info;
-
-            if (requestedInstanceIds is not null)
-            {
-                int gameObjectInstanceId;
-
-                try
-                {
-                    gameObjectInstanceId =
-                        unity.GetInstanceId(
-                            gameObject);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (
-                    !requestedInstanceIds.Contains(
-                        gameObjectInstanceId)
-                )
-                {
-                    continue;
-                }
-            }
-
-            if (requestedParentInstanceIds is not null)
-            {
-                int? parentInstanceId;
-
-                try
-                {
-                    parentInstanceId =
-                        unity.GetParentGameObjectInstanceId(
-                            gameObject);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (
-                    !parentInstanceId.HasValue ||
-                    !requestedParentInstanceIds.Contains(
-                        parentInstanceId.Value)
-                )
-                {
-                    continue;
-                }
-            }
+            DCMLGameResourceInfo info;
 
             try
             {
                 if (
-                    !unity.TryCreateInfo(
+                    !unity.TryCreateResourceInfo(
                         gameObject,
                         out info)
                 )
@@ -113,16 +52,8 @@ internal sealed class MelonGameObjectDiscovery :
             }
             catch
             {
-                // One destroyed or unusual Unity object should
-                // never invalidate an otherwise read-only snapshot.
-                continue;
-            }
-
-            if (
-                !query.IncludeInactive &&
-                !info.ActiveInHierarchy
-            )
-            {
+                // One destroyed or unusual Unity object should not
+                // invalidate an otherwise read-only resource snapshot.
                 continue;
             }
 
@@ -131,17 +62,6 @@ internal sealed class MelonGameObjectDiscovery :
                 info.Name.IndexOf(
                     query.NameContains,
                     StringComparison.OrdinalIgnoreCase) < 0
-            )
-            {
-                continue;
-            }
-
-            if (
-                query.SceneName.Length > 0 &&
-                !string.Equals(
-                    info.SceneName,
-                    query.SceneName,
-                    StringComparison.OrdinalIgnoreCase)
             )
             {
                 continue;
@@ -175,11 +95,7 @@ internal sealed class MelonGameObjectDiscovery :
             matches
                 .OrderBy(
                     value =>
-                        value.SceneName,
-                    StringComparer.OrdinalIgnoreCase)
-                .ThenBy(
-                    value =>
-                        value.HierarchyPath,
+                        value.Name,
                     StringComparer.OrdinalIgnoreCase)
                 .ThenBy(
                     value =>
@@ -263,19 +179,9 @@ internal sealed class MelonGameObjectDiscovery :
 
         private readonly PropertyInfo _objectNameProperty;
 
-        private readonly PropertyInfo _componentGameObjectProperty;
-
         private readonly MethodInfo _getInstanceIdMethod;
 
-        private readonly PropertyInfo _activeInHierarchyProperty;
-
         private readonly PropertyInfo _sceneProperty;
-
-        private readonly PropertyInfo _transformProperty;
-
-        private readonly PropertyInfo _transformParentProperty;
-
-        private readonly PropertyInfo _sceneNameProperty;
 
         private readonly PropertyInfo _sceneIsLoadedProperty;
 
@@ -289,13 +195,8 @@ internal sealed class MelonGameObjectDiscovery :
             Type gameObjectType,
             Type componentType,
             PropertyInfo objectNameProperty,
-            PropertyInfo componentGameObjectProperty,
             MethodInfo getInstanceIdMethod,
-            PropertyInfo activeInHierarchyProperty,
             PropertyInfo sceneProperty,
-            PropertyInfo transformProperty,
-            PropertyInfo transformParentProperty,
-            PropertyInfo sceneNameProperty,
             PropertyInfo sceneIsLoadedProperty,
             MethodInfo sceneIsValidMethod,
             MethodInfo findObjectsOfTypeAllMethod,
@@ -310,26 +211,11 @@ internal sealed class MelonGameObjectDiscovery :
             _objectNameProperty =
                 objectNameProperty;
 
-            _componentGameObjectProperty =
-                componentGameObjectProperty;
-
             _getInstanceIdMethod =
                 getInstanceIdMethod;
 
-            _activeInHierarchyProperty =
-                activeInHierarchyProperty;
-
             _sceneProperty =
                 sceneProperty;
-
-            _transformProperty =
-                transformProperty;
-
-            _transformParentProperty =
-                transformParentProperty;
-
-            _sceneNameProperty =
-                sceneNameProperty;
 
             _sceneIsLoadedProperty =
                 sceneIsLoadedProperty;
@@ -358,10 +244,6 @@ internal sealed class MelonGameObjectDiscovery :
                 FindLoadedType(
                     "UnityEngine.Component");
 
-            Type transformType =
-                FindLoadedType(
-                    "UnityEngine.Transform");
-
             Type resourcesType =
                 FindLoadedType(
                     "UnityEngine.Resources");
@@ -375,11 +257,6 @@ internal sealed class MelonGameObjectDiscovery :
                     unityObjectType,
                     "name");
 
-            PropertyInfo componentGameObjectProperty =
-                RequireProperty(
-                    componentType,
-                    "gameObject");
-
             MethodInfo getInstanceIdMethod =
                 RequireMethod(
                     unityObjectType,
@@ -388,30 +265,10 @@ internal sealed class MelonGameObjectDiscovery :
                     0,
                     false);
 
-            PropertyInfo activeInHierarchyProperty =
-                RequireProperty(
-                    gameObjectType,
-                    "activeInHierarchy");
-
             PropertyInfo sceneProperty =
                 RequireProperty(
                     gameObjectType,
                     "scene");
-
-            PropertyInfo transformProperty =
-                RequireProperty(
-                    gameObjectType,
-                    "transform");
-
-            PropertyInfo transformParentProperty =
-                RequireProperty(
-                    transformType,
-                    "parent");
-
-            PropertyInfo sceneNameProperty =
-                RequireProperty(
-                    sceneType,
-                    "name");
 
             PropertyInfo sceneIsLoadedProperty =
                 RequireProperty(
@@ -442,32 +299,21 @@ internal sealed class MelonGameObjectDiscovery :
                     0,
                     true);
 
-            MethodInfo findObjectsOfTypeAllMethod =
-                findObjectsOfTypeAllDefinition
-                    .MakeGenericMethod(
-                        gameObjectType);
-
-            MethodInfo getComponentsMethod =
-                getComponentsDefinition
-                    .MakeGenericMethod(
-                        componentType);
-
             return
                 new UnityReflection(
                     gameObjectType,
                     componentType,
                     objectNameProperty,
-                    componentGameObjectProperty,
                     getInstanceIdMethod,
-                    activeInHierarchyProperty,
                     sceneProperty,
-                    transformProperty,
-                    transformParentProperty,
-                    sceneNameProperty,
                     sceneIsLoadedProperty,
                     sceneIsValidMethod,
-                    findObjectsOfTypeAllMethod,
-                    getComponentsMethod);
+                    findObjectsOfTypeAllDefinition
+                        .MakeGenericMethod(
+                            gameObjectType),
+                    getComponentsDefinition
+                        .MakeGenericMethod(
+                            componentType));
         }
 
         public IEnumerable<object> FindAllGameObjects()
@@ -494,19 +340,9 @@ internal sealed class MelonGameObjectDiscovery :
             }
         }
 
-        public int GetInstanceId(
-            object unityObject)
-        {
-            return
-                Convert.ToInt32(
-                    _getInstanceIdMethod.Invoke(
-                        unityObject,
-                        null));
-        }
-
-        public bool TryCreateInfo(
+        public bool TryCreateResourceInfo(
             object gameObject,
-            out DCMLGameObjectInfo info)
+            out DCMLGameResourceInfo info)
         {
             info =
                 null;
@@ -515,25 +351,24 @@ internal sealed class MelonGameObjectDiscovery :
                 _sceneProperty.GetValue(
                     gameObject);
 
-            if (scene is null)
-            {
-                return false;
-            }
-
             bool sceneIsValid =
+                scene is not null &&
                 Convert.ToBoolean(
                     _sceneIsValidMethod.Invoke(
                         scene,
                         null));
 
             bool sceneIsLoaded =
+                sceneIsValid &&
                 Convert.ToBoolean(
                     _sceneIsLoadedProperty.GetValue(
                         scene));
 
+            // Normal loaded-scene objects belong to
+            // IDCMLGameObjectDiscovery, not this capability.
             if (
-                !sceneIsValid ||
-                !sceneIsLoaded
+                sceneIsValid &&
+                sceneIsLoaded
             )
             {
                 return false;
@@ -545,167 +380,23 @@ internal sealed class MelonGameObjectDiscovery :
                         gameObject))
                 ?? string.Empty;
 
-            string sceneName =
-                Convert.ToString(
-                    _sceneNameProperty.GetValue(
-                        scene))
-                ?? string.Empty;
-
-            bool activeInHierarchy =
-                Convert.ToBoolean(
-                    _activeInHierarchyProperty.GetValue(
-                        gameObject));
-
             int instanceId =
-                GetInstanceId(
-                    gameObject);
-
-            object transform =
-                _transformProperty.GetValue(
-                    gameObject);
-
-            string hierarchyPath =
-                CreateHierarchyPath(
-                    transform,
-                    name);
-
-            int? parentInstanceId =
-                GetParentInstanceIdFromTransform(
-                    transform);
+                Convert.ToInt32(
+                    _getInstanceIdMethod.Invoke(
+                        gameObject,
+                        null));
 
             IReadOnlyList<string> componentTypeNames =
                 GetComponentTypeNames(
                     gameObject);
 
             info =
-                new DCMLGameObjectInfo(
+                new DCMLGameResourceInfo(
                     instanceId,
                     name,
-                    sceneName,
-                    hierarchyPath,
-                    activeInHierarchy,
-                    componentTypeNames,
-                    parentInstanceId);
+                    componentTypeNames);
 
             return true;
-        }
-
-        public int? GetParentGameObjectInstanceId(
-            object gameObject)
-        {
-            if (gameObject is null)
-            {
-                return null;
-            }
-
-            object transform =
-                _transformProperty.GetValue(
-                    gameObject);
-
-            return
-                GetParentInstanceIdFromTransform(
-                    transform);
-        }
-
-        private int? GetParentInstanceIdFromTransform(
-            object transform)
-        {
-            if (transform is null)
-            {
-                return null;
-            }
-
-            object parentTransform =
-                _transformParentProperty.GetValue(
-                    transform);
-
-            if (
-                parentTransform is null ||
-                ReferenceEquals(
-                    parentTransform,
-                    transform)
-            )
-            {
-                return null;
-            }
-
-            object parentGameObject =
-                _componentGameObjectProperty.GetValue(
-                    parentTransform);
-
-            if (parentGameObject is null)
-            {
-                return null;
-            }
-
-            return
-                GetInstanceId(
-                    parentGameObject);
-        }
-
-        private string CreateHierarchyPath(
-            object transform,
-            string fallbackName)
-        {
-            if (transform is null)
-            {
-                return fallbackName;
-            }
-
-            var names =
-                new List<string>();
-
-            object current =
-                transform;
-
-            for (
-                int depth = 0;
-                depth < 128 &&
-                current is not null;
-                depth++
-            )
-            {
-                string currentName =
-                    Convert.ToString(
-                        _objectNameProperty.GetValue(
-                            current))
-                    ?? string.Empty;
-
-                if (currentName.Length > 0)
-                {
-                    names.Add(
-                        currentName);
-                }
-
-                object parent =
-                    _transformParentProperty.GetValue(
-                        current);
-
-                if (
-                    parent is null ||
-                    ReferenceEquals(
-                        parent,
-                        current)
-                )
-                {
-                    break;
-                }
-
-                current =
-                    parent;
-            }
-
-            if (names.Count == 0)
-            {
-                return fallbackName;
-            }
-
-            names.Reverse();
-
-            return
-                string.Join(
-                    "/",
-                    names);
         }
 
         private IReadOnlyList<string> GetComponentTypeNames(
@@ -992,7 +683,6 @@ internal sealed class MelonGameObjectDiscovery :
             }
         }
 
-
         private static IEnumerable<object> Enumerate(
             object value)
         {
@@ -1003,9 +693,7 @@ internal sealed class MelonGameObjectDiscovery :
 
             if (value is IEnumerable enumerable)
             {
-                foreach (
-                    object item in
-                    enumerable)
+                foreach (object item in enumerable)
                 {
                     if (item is not null)
                     {
@@ -1016,14 +704,17 @@ internal sealed class MelonGameObjectDiscovery :
                 yield break;
             }
 
+            Type type =
+                value.GetType();
+
             PropertyInfo lengthProperty =
-                value.GetType().GetProperty(
+                type.GetProperty(
                     "Length",
                     BindingFlags.Public |
                     BindingFlags.Instance);
 
             PropertyInfo itemProperty =
-                value.GetType().GetProperty(
+                type.GetProperty(
                     "Item",
                     BindingFlags.Public |
                     BindingFlags.Instance);
@@ -1033,8 +724,7 @@ internal sealed class MelonGameObjectDiscovery :
                 itemProperty is null
             )
             {
-                throw new InvalidOperationException(
-                    $"Unity collection type '{value.GetType().FullName}' is not enumerable.");
+                yield break;
             }
 
             int length =
@@ -1045,8 +735,7 @@ internal sealed class MelonGameObjectDiscovery :
             for (
                 int index = 0;
                 index < length;
-                index++
-            )
+                index++)
             {
                 object item =
                     itemProperty.GetValue(
@@ -1084,7 +773,7 @@ internal sealed class MelonGameObjectDiscovery :
             }
 
             throw new InvalidOperationException(
-                $"DCML could not locate loaded Unity type '{fullName}'.");
+                $"Required Unity/IL2CPP type '{fullName}' is not loaded.");
         }
 
         private static PropertyInfo RequireProperty(
@@ -1100,8 +789,9 @@ internal sealed class MelonGameObjectDiscovery :
 
             return
                 property ??
-                throw new InvalidOperationException(
-                    $"DCML could not locate Unity property '{type.FullName}.{name}'.");
+                throw new MissingMemberException(
+                    type.FullName,
+                    name);
         }
 
         private static MethodInfo RequireMethod(
@@ -1109,7 +799,7 @@ internal sealed class MelonGameObjectDiscovery :
             string name,
             bool isStatic,
             int parameterCount,
-            bool isGeneric)
+            bool genericDefinition)
         {
             MethodInfo method =
                 type
@@ -1118,23 +808,19 @@ internal sealed class MelonGameObjectDiscovery :
                         BindingFlags.Instance |
                         BindingFlags.Static)
                     .FirstOrDefault(
-                        candidate =>
-                            candidate.Name == name &&
-                            candidate.IsStatic == isStatic &&
-                            candidate.GetParameters().Length ==
+                        value =>
+                            value.Name == name &&
+                            value.IsStatic == isStatic &&
+                            value.GetParameters().Length ==
                                 parameterCount &&
-                            candidate.IsGenericMethodDefinition ==
-                                isGeneric &&
-                            (
-                                !isGeneric ||
-                                candidate.GetGenericArguments().Length ==
-                                    1
-                            ));
+                            value.IsGenericMethodDefinition ==
+                                genericDefinition);
 
             return
                 method ??
-                throw new InvalidOperationException(
-                    $"DCML could not locate required Unity method '{type.FullName}.{name}'.");
+                throw new MissingMethodException(
+                    type.FullName,
+                    name);
         }
     }
 }
