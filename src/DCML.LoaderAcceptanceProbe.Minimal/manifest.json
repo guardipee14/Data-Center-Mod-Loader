@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dcml.probe.loader-acceptance-minimal",
+  "name": "DCML Minimal Loader Acceptance Probe",
+  "version": "1.0.0",
+  "description": "Validates that DCML loader acceptance does not require optional SDK, Data Center, or host convenience APIs.",
+  "author": "DCML",
+  "entryAssembly": "DCML.LoaderAcceptanceProbe.Minimal.dll",
+  "entryType": "DCML.LoaderAcceptanceProbe.Minimal.MinimalModule",
+  "minimumDCMLVersion": "0.0.3",
+  "requiresRestart": false,
+  "dependencies": []
+}

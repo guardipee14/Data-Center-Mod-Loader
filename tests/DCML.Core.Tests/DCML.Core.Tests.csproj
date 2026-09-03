@@ -33,6 +33,8 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\DCML.CompatibilityProbe.UnsupportedCapability\DCML.CompatibilityProbe.UnsupportedCapability.csproj"
                       ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\DCML.LoaderAcceptanceProbe.Minimal\DCML.LoaderAcceptanceProbe.Minimal.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

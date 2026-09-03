@@ -89,7 +89,7 @@ compatibility.
 - [x] Add a multi-module integration probe with dependency-safe startup and cross-module event delivery
 - [x] Add integration coverage for optional dependency present / absent behavior across real module packages
 - [x] Add package-level compatibility diagnostics for unsupported DCML/API requirements
-- [ ] Keep loader acceptance independent from optional SDK/Data Center helper usage
+- [x] Keep loader acceptance independent from optional SDK/Data Center helper usage
 
 ### Optional SDK boundary
 

@@ -72,6 +72,12 @@ jobs:
       - name: Build compatibility rejection probe
         run: dotnet build src/DCML.CompatibilityProbe.UnsupportedCapability/DCML.CompatibilityProbe.UnsupportedCapability.csproj --configuration Release --no-restore
 
+      - name: Restore minimal loader acceptance probe
+        run: dotnet restore src/DCML.LoaderAcceptanceProbe.Minimal/DCML.LoaderAcceptanceProbe.Minimal.csproj
+
+      - name: Build minimal loader acceptance probe
+        run: dotnet build src/DCML.LoaderAcceptanceProbe.Minimal/DCML.LoaderAcceptanceProbe.Minimal.csproj --configuration Release --no-restore
+
       - name: Restore persistence helper
         run: dotnet restore src/DCML.Persistence.Helper/DCML.Persistence.Helper.csproj
 
