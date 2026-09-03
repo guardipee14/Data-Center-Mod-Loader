@@ -4,9 +4,9 @@ DCML is an experimental, host-neutral mod runtime for **Data Center** by Waseku.
 
 The current implementation runs through a MelonLoader host adapter, while DCML's runtime contracts remain separate from MelonLoader. The goal is to let the loader handle discovery, validation, dependency ordering, activation, lifecycle, and host bridging without forcing every mod author into a special high-level development framework.
 
-> **Project status:** early development / **v0.0.2 Data Center Discovery Foundation**.
+> **Project status:** early development / **v0.0.3 Evidence-Backed Physical Topology**.
 
-[Latest prerelease: DCML v0.0.2](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.2)
+[Latest prerelease: DCML v0.0.3](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.3)
 
 ## Modding model
 
@@ -49,9 +49,13 @@ The current runtime has been tested inside the live Data Center game process and
 - filter object discovery by exact component type or component prefix;
 - page deterministically across large scenes;
 - catalog loaded IL2CPP wrapper types and their inheritance information;
-- provide optional Data Center-specific semantic discovery helpers.
+- provide optional Data Center-specific semantic discovery helpers;
+- capture evidence-backed hardware snapshots and topology;
+- preserve persistent physical-cable identities from explicit read-only save data;
+- merge persisted cable segments into bidirectional physical `NetworkConnection` edges;
+- keep save decoding outside the MelonLoader .NET 6 process through the optional .NET 8 persistence helper.
 
-The current automated test baseline is **168 passing tests**.
+The current automated test baseline is **306 passing tests**.
 
 ## Runtime capabilities
 
@@ -71,7 +75,20 @@ The end-to-end probe has verified runtime initialization, configuration persiste
 
 ## Live validation
 
-The v0.0.2 discovery milestone was validated inside Data Center with:
+The v0.0.3 physical-topology milestone was validated with the known healthy recovered save and the live Data Center runtime:
+
+- **686** persisted physical cables;
+- **1,372 / 1,372** cable endpoints resolved;
+- **686** physical `NetworkConnection` edges;
+- all persisted physical edges marked bidirectional;
+- explicit save selection and SHA-256-gated validation;
+- read-only save access;
+- NRBF decoding isolated in an out-of-process .NET 8 helper;
+- no `System.Formats.Nrbf` or `System.Reflection.Metadata 9` dependency loaded into the MelonLoader .NET 6 context;
+- one-shot runtime proof completed and disabled itself afterward;
+- no DCML runtime initialization errors in the verified launch.
+
+The earlier v0.0.2 discovery milestone was validated inside Data Center with:
 
 - **22,860** relevant `BaseScene` objects scanned across **2 pages**;
 - **94** unique focused IL2CPP component types;
@@ -235,6 +252,7 @@ src/
   DCML.Core/
   DCML.DataCenter/
   DCML.Loader.MelonLoader/
+  DCML.Persistence.Helper/
   DCML.TestModule/
 
 tests/

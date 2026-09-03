@@ -469,7 +469,7 @@ public sealed class TestModule : IDCMLModule
         "DCML Lifecycle Test Module";
 
     public string Version =>
-        "0.0.1";
+        DCML.Core.DCMLVersion.Current;
 
     public void Initialize(
         IDCMLModuleContext context)
