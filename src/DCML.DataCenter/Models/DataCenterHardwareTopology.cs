@@ -22,6 +22,9 @@ public static class DataCenterHardwareTopologyRelationships
 {
     public const string SfpModuleInsertion =
         "sfp-module-insertion";
+
+    public const string PhysicalCableConnection =
+        "physical-cable-connection";
 }
 
 public sealed class DataCenterHardwareTopologyNode
@@ -30,7 +33,9 @@ public sealed class DataCenterHardwareTopologyNode
         int instanceId,
         string? name,
         string? typeName,
-        string? kind)
+        string? kind,
+        string? persistentId = null,
+        string? identityKind = null)
     {
         InstanceId = instanceId;
         Name = name ?? string.Empty;
@@ -42,6 +47,14 @@ public sealed class DataCenterHardwareTopologyNode
             string.IsNullOrWhiteSpace(kind)
                 ? string.Empty
                 : kind.Trim();
+        PersistentID =
+            string.IsNullOrWhiteSpace(persistentId)
+                ? string.Empty
+                : persistentId.Trim();
+        IdentityKind =
+            string.IsNullOrWhiteSpace(identityKind)
+                ? string.Empty
+                : identityKind.Trim();
     }
 
     public int InstanceId { get; }
@@ -51,6 +64,29 @@ public sealed class DataCenterHardwareTopologyNode
     public string TypeName { get; }
 
     public string Kind { get; }
+
+    public string PersistentID { get; }
+
+    public string IdentityKind { get; }
+
+    public bool HasRuntimeInstance =>
+        InstanceId != 0;
+
+    public bool HasPersistentIdentity =>
+        PersistentID.Length > 0;
+
+    public string IdentityKey =>
+        HasPersistentIdentity
+            ? "persistent:" +
+                (
+                    IdentityKind.Length == 0
+                        ? "unknown"
+                        : IdentityKind
+                ) +
+                ":" +
+                PersistentID
+            : "runtime:" +
+                InstanceId;
 }
 
 public sealed class DataCenterHardwareTopologyEdge
@@ -65,7 +101,11 @@ public sealed class DataCenterHardwareTopologyEdge
             DataCenterHardwareTopologyTargetLocation.Unknown,
         DataCenterCableSnapshot? targetCable = null,
         DataCenterHardwareTopologyEdgeKind kind =
-            DataCenterHardwareTopologyEdgeKind.Unknown)
+            DataCenterHardwareTopologyEdgeKind.Unknown,
+        int? physicalCableId = null,
+        bool isBidirectional = false,
+        string? evidenceSource = null,
+        bool sourceResolved = true)
     {
         if (string.IsNullOrWhiteSpace(relationship))
         {
@@ -91,6 +131,24 @@ public sealed class DataCenterHardwareTopologyEdge
         TargetLocation = targetLocation;
         TargetCable = targetCable;
         Kind = kind;
+
+        if (
+            physicalCableId.HasValue &&
+            physicalCableId.Value < 0
+        )
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(physicalCableId));
+        }
+
+        PhysicalCableID = physicalCableId;
+        IsBidirectional = isBidirectional;
+        EvidenceSource =
+            string.IsNullOrWhiteSpace(
+                evidenceSource)
+                ? string.Empty
+                : evidenceSource.Trim();
+        SourceResolved = sourceResolved;
     }
 
     public string Relationship { get; }
@@ -112,6 +170,18 @@ public sealed class DataCenterHardwareTopologyEdge
     public DataCenterCableSnapshot? TargetCable { get; }
 
     public DataCenterHardwareTopologyEdgeKind Kind { get; }
+
+    public int? PhysicalCableID { get; }
+
+    public bool IsBidirectional { get; }
+
+    public string EvidenceSource { get; }
+
+    public bool SourceResolved { get; }
+
+    public bool IsFullyResolved =>
+        SourceResolved &&
+        TargetResolved;
 
     public bool IsNetworkConnection =>
         Kind ==
@@ -219,6 +289,18 @@ public sealed class DataCenterHardwareTopologyGraph
                 value =>
                     value.Kind ==
                         DataCenterHardwareTopologyEdgeKind.NetworkConnection)
+            .ToArray();
+
+    public IReadOnlyList<DataCenterHardwareTopologyEdge> PhysicalCableEdges =>
+        _edges
+            .Where(
+                value =>
+                    value.Kind ==
+                        DataCenterHardwareTopologyEdgeKind.NetworkConnection &&
+                    string.Equals(
+                        value.Relationship,
+                        DataCenterHardwareTopologyRelationships.PhysicalCableConnection,
+                        StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
     public IReadOnlyList<DataCenterHardwareTopologyEdge> ResolvedEdges =>
