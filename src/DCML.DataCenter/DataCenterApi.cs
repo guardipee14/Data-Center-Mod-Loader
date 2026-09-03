@@ -10,7 +10,8 @@ public sealed class DataCenterApi
         IDataCenterEntityDiscovery entities,
         IDataCenterComponentCatalog components,
         IDataCenterHardwareSnapshots? hardware,
-        IDataCenterHardwareTopology? topology)
+        IDataCenterHardwareTopology? topology,
+        IDataCenterCablePersistenceSource? cablePersistence)
     {
         Entities =
             entities ??
@@ -24,6 +25,7 @@ public sealed class DataCenterApi
 
         Hardware = hardware;
         Topology = topology;
+        CablePersistence = cablePersistence;
     }
 
     public IDataCenterEntityDiscovery Entities { get; }
@@ -34,8 +36,20 @@ public sealed class DataCenterApi
 
     public IDataCenterHardwareTopology? Topology { get; }
 
+    public IDataCenterCablePersistenceSource? CablePersistence { get; }
+
     public static DataCenterApi Create(
         IDCMLModuleContext context)
+    {
+        return Create(
+            context,
+            cablePersistence:
+                null);
+    }
+
+    public static DataCenterApi Create(
+        IDCMLModuleContext context,
+        IDataCenterCablePersistenceSource? cablePersistence)
     {
         if (context is null)
         {
@@ -82,6 +96,8 @@ public sealed class DataCenterApi
                     ? null
                     : new DataCenterHardwareTopology(
                         hardware,
-                        componentStateReader));
+                        componentStateReader,
+                        cablePersistence),
+                cablePersistence);
     }
 }

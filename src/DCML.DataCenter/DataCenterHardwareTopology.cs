@@ -44,11 +44,16 @@ public sealed class DataCenterHardwareTopology :
     private readonly IDCMLGameComponentStateReader?
         _componentStateReader;
 
+    private readonly IDataCenterCablePersistenceSource?
+        _persistenceSource;
+
     public DataCenterHardwareTopology(
         IDataCenterHardwareSnapshots hardwareSnapshots)
         : this(
             hardwareSnapshots,
             componentStateReader:
+                null,
+            persistenceSource:
                 null)
     {
     }
@@ -56,6 +61,18 @@ public sealed class DataCenterHardwareTopology :
     public DataCenterHardwareTopology(
         IDataCenterHardwareSnapshots hardwareSnapshots,
         IDCMLGameComponentStateReader? componentStateReader)
+        : this(
+            hardwareSnapshots,
+            componentStateReader,
+            persistenceSource:
+                null)
+    {
+    }
+
+    public DataCenterHardwareTopology(
+        IDataCenterHardwareSnapshots hardwareSnapshots,
+        IDCMLGameComponentStateReader? componentStateReader,
+        IDataCenterCablePersistenceSource? persistenceSource)
     {
         _hardwareSnapshots =
             hardwareSnapshots ??
@@ -64,6 +81,9 @@ public sealed class DataCenterHardwareTopology :
 
         _componentStateReader =
             componentStateReader;
+
+        _persistenceSource =
+            persistenceSource;
     }
 
     public async Task<DataCenterHardwareTopologyGraph> CaptureAsync(
@@ -87,7 +107,9 @@ public sealed class DataCenterHardwareTopology :
             !query.IncludeSceneObjects
         )
         {
-            return Build(snapshot);
+            return await CombinePersistenceAsync(
+                Build(snapshot))
+                .ConfigureAwait(false);
         }
 
         HashSet<int> targetInstanceIds =
@@ -98,7 +120,9 @@ public sealed class DataCenterHardwareTopology :
 
         if (targetInstanceIds.Count == 0)
         {
-            return Build(snapshot);
+            return await CombinePersistenceAsync(
+                Build(snapshot))
+                .ConfigureAwait(false);
         }
 
         var sceneTargets =
@@ -173,7 +197,7 @@ public sealed class DataCenterHardwareTopology :
                     .ConfigureAwait(
                         false);
 
-        return
+        DataCenterHardwareTopologyGraph liveGraph =
             BuildCore(
                 snapshot,
                 sceneTargets,
@@ -187,6 +211,30 @@ public sealed class DataCenterHardwareTopology :
                 nonSceneSearch.Exhausted,
                 sceneTargets.Count,
                 targetedCableDetails.Count);
+
+        return await CombinePersistenceAsync(
+            liveGraph)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<DataCenterHardwareTopologyGraph>
+        CombinePersistenceAsync(
+            DataCenterHardwareTopologyGraph liveGraph)
+    {
+        if (_persistenceSource is null)
+        {
+            return liveGraph;
+        }
+
+        DataCenterCablePersistenceSnapshot persistence =
+            await _persistenceSource
+                .ReadAsync()
+                .ConfigureAwait(false);
+
+        return DataCenterPhysicalCableTopology.Combine(
+            liveGraph,
+            persistence.Cables,
+            persistence.Index);
     }
 
     public static DataCenterHardwareTopologyGraph Build(

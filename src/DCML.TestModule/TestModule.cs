@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DCML.Core.Abstractions;
 using DCML.Core.Models;
 using DCML.DataCenter;
+using DCML.DataCenter.Abstractions;
 using DCML.DataCenter.Models;
 
 namespace DCML.TestModule;
@@ -82,6 +85,9 @@ public sealed class TestModule : IDCMLModule
 
     private DataCenterApi? _dataCenterApi;
 
+    private IDataCenterCablePersistenceSource?
+        _cablePersistenceSource;
+
     private IDisposable? _probeSubscription;
 
     private IDisposable? _sceneSubscription;
@@ -115,6 +121,18 @@ public sealed class TestModule : IDCMLModule
     private int _cablePersistenceMetadataProbeFramesRemaining;
 
     private string _cablePersistenceMetadataProbeScene =
+        string.Empty;
+
+    private int _physicalCablePersistenceSourceProbeRuns;
+    private bool _physicalCablePersistenceSourceProbeRunning;
+    private int _lastPhysicalCablePersistenceCableCount;
+    private int _lastPhysicalCablePersistenceEndpointCount;
+    private int _lastPhysicalCablePersistenceResolvedEndpointCount;
+    private int _lastPhysicalCablePersistenceUnresolvedEndpointCount;
+    private int _lastPhysicalCablePersistenceNetworkEdgeCount;
+    private string _lastPhysicalCablePersistenceSourcePath =
+        string.Empty;
+    private string _lastPhysicalCablePersistenceError =
         string.Empty;
 
     private int _eventsReceived;
@@ -585,9 +603,18 @@ public sealed class TestModule : IDCMLModule
         _lastGameThreadInitializeWasMainThread =
             _gameThread.IsMainThread;
 
+        _settings =
+            _configuration.Load(
+                new ProbeSettings());
+
+        _cablePersistenceSource =
+            CreateCablePersistenceSource(
+                _settings);
+
         _dataCenterApi =
             DataCenterApi.Create(
-                context);
+                context,
+                _cablePersistenceSource);
 
         if (!string.Equals(
                 _runtimeInfo.ModuleId,
@@ -619,10 +646,6 @@ public sealed class TestModule : IDCMLModule
                     $"DCML runtime information did not advertise '{capability}'.");
             }
         }
-
-        _settings =
-            _configuration.Load(
-                new ProbeSettings());
 
         _settings.LaunchCount++;
         _settings.LastLifecycleStage =
@@ -700,6 +723,8 @@ public sealed class TestModule : IDCMLModule
 
         RunGameThreadProbe();
 
+        RunPhysicalCablePersistenceSourceProbe();
+
         _logger!.Info(
             "Start completed.");
 
@@ -747,6 +772,332 @@ public sealed class TestModule : IDCMLModule
 
         _logger?.Info(
             "Stop completed.");
+    }
+
+    private IDataCenterCablePersistenceSource?
+        CreateCablePersistenceSource(
+            ProbeSettings settings)
+    {
+        if (
+            !settings.EnablePhysicalCablePersistenceSource ||
+            string.IsNullOrWhiteSpace(
+                settings.PhysicalCableSavePath) ||
+            string.IsNullOrWhiteSpace(
+                settings.PhysicalCableHelperHostPath) ||
+            string.IsNullOrWhiteSpace(
+                settings.PhysicalCableHelperDllPath)
+        )
+        {
+            return null;
+        }
+
+        return new ProcessCablePersistenceSource(
+            settings.PhysicalCableHelperHostPath,
+            settings.PhysicalCableHelperDllPath,
+            settings.PhysicalCableSavePath);
+    }
+
+    private void RunPhysicalCablePersistenceSourceProbe()
+    {
+        if (
+            _settings?.EnablePhysicalCablePersistenceSourceProbe != true ||
+            _cablePersistenceSource is null ||
+            _context is null ||
+            _physicalCablePersistenceSourceProbeRunning
+        )
+        {
+            return;
+        }
+
+        _physicalCablePersistenceSourceProbeRunning = true;
+        _physicalCablePersistenceSourceProbeRuns++;
+        _lastPhysicalCablePersistenceError = string.Empty;
+        _lastPhysicalCablePersistenceSourcePath =
+            _cablePersistenceSource.SourcePath;
+
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    DataCenterCablePersistenceSnapshot persistence =
+                        await _cablePersistenceSource
+                            .ReadAsync()
+                            .ConfigureAwait(false);
+
+                    DataCenterHardwareTopologyGraph graph =
+                        DataCenterPhysicalCableTopology.Build(
+                            persistence.Cables,
+                            persistence.Index);
+
+                    _lastPhysicalCablePersistenceCableCount =
+                        persistence.CableCount;
+                    _lastPhysicalCablePersistenceEndpointCount =
+                        persistence.EndpointCount;
+                    _lastPhysicalCablePersistenceResolvedEndpointCount =
+                        persistence.ResolvedEndpointCount;
+                    _lastPhysicalCablePersistenceUnresolvedEndpointCount =
+                        persistence.UnresolvedEndpointCount;
+                    _lastPhysicalCablePersistenceNetworkEdgeCount =
+                        graph.NetworkConnectionEdges.Count;
+
+                    WritePhysicalCablePersistenceReport(
+                        "Complete",
+                        persistence,
+                        graph);
+                }
+                catch (Exception exception)
+                {
+                    _lastPhysicalCablePersistenceError =
+                        exception.GetType().FullName +
+                        ": " +
+                        exception.Message;
+
+                    WritePhysicalCablePersistenceReport(
+                        "Failed",
+                        null,
+                        null);
+                }
+                finally
+                {
+                    _physicalCablePersistenceSourceProbeRunning = false;
+
+                    if (
+                        _gameThread is not null &&
+                        _settings is not null &&
+                        _configuration is not null
+                    )
+                    {
+                        _gameThread.Post(
+                            () =>
+                            {
+                                _settings.EnablePhysicalCablePersistenceSourceProbe =
+                                    false;
+
+                                _configuration.Save(
+                                    _settings);
+                            });
+                    }
+                }
+            });
+    }
+
+    private void WritePhysicalCablePersistenceReport(
+        string status,
+        DataCenterCablePersistenceSnapshot? persistence,
+        DataCenterHardwareTopologyGraph? graph)
+    {
+        if (_context is null)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(
+            _context.DataDirectory);
+
+        string report =
+            Path.Combine(
+                _context.DataDirectory,
+                "DCML.PhysicalCablePersistenceSource.log");
+
+        File.WriteAllLines(
+            report,
+            new[]
+            {
+                "DCML Physical Cable Persistence Source",
+                "Status: " + status,
+                "UTC: " + DateTime.UtcNow.ToString("O"),
+                "SourceMode: OutOfProcessJson",
+                "SourcePath: " + _lastPhysicalCablePersistenceSourcePath,
+                "CableCount: " + _lastPhysicalCablePersistenceCableCount,
+                "EndpointCount: " + _lastPhysicalCablePersistenceEndpointCount,
+                "ResolvedEndpointCount: " + _lastPhysicalCablePersistenceResolvedEndpointCount,
+                "UnresolvedEndpointCount: " + _lastPhysicalCablePersistenceUnresolvedEndpointCount,
+                "NetworkConnectionEdgeCount: " + _lastPhysicalCablePersistenceNetworkEdgeCount,
+                "PhysicalCableEdgeCount: " +
+                    (graph?.PhysicalCableEdges.Count.ToString() ?? string.Empty),
+                "AllEdgesBidirectional: " +
+                    (
+                        graph is null
+                            ? string.Empty
+                            : graph.PhysicalCableEdges.All(
+                                value => value.IsBidirectional)
+                                .ToString()
+                    ),
+                "Error: " + _lastPhysicalCablePersistenceError
+            });
+    }
+
+    private sealed class ProcessCablePersistenceSource :
+        IDataCenterCablePersistenceSource
+    {
+        private readonly string _hostPath;
+        private readonly string _helperDllPath;
+
+        public ProcessCablePersistenceSource(
+            string hostPath,
+            string helperDllPath,
+            string savePath)
+        {
+            _hostPath =
+                Path.GetFullPath(hostPath);
+            _helperDllPath =
+                Path.GetFullPath(helperDllPath);
+            SourcePath =
+                Path.GetFullPath(savePath);
+        }
+
+        public string SourcePath { get; }
+
+        public async Task<DataCenterCablePersistenceSnapshot> ReadAsync()
+        {
+            var startInfo =
+                new ProcessStartInfo
+                {
+                    FileName = _hostPath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory =
+                        Path.GetDirectoryName(
+                            _helperDllPath) ??
+                        string.Empty
+                };
+
+            startInfo.ArgumentList.Add(
+                _helperDllPath);
+
+            startInfo.ArgumentList.Add(
+                SourcePath);
+
+            using Process process =
+                new();
+
+            process.StartInfo =
+                startInfo;
+
+            if (!process.Start())
+            {
+                throw new InvalidOperationException(
+                    "The persistence helper process did not start.");
+            }
+
+            string stdout =
+                await process.StandardOutput
+                    .ReadToEndAsync()
+                    .ConfigureAwait(false);
+
+            string stderr =
+                await process.StandardError
+                    .ReadToEndAsync()
+                    .ConfigureAwait(false);
+
+            await process.WaitForExitAsync()
+                .ConfigureAwait(false);
+
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    "Persistence helper failed with exit code " +
+                    process.ExitCode +
+                    ": " +
+                    stderr);
+            }
+
+            HelperSnapshot? raw =
+                JsonSerializer.Deserialize<HelperSnapshot>(
+                    stdout);
+
+            if (raw is null)
+            {
+                throw new InvalidDataException(
+                    "Persistence helper returned no JSON snapshot.");
+            }
+
+            DataCenterCablePersistenceRecord[] cables =
+                raw.Cables
+                    .Select(
+                        cable =>
+                            new DataCenterCablePersistenceRecord(
+                                cable.CableID,
+                                ToEndpoint(
+                                    DataCenterPhysicalCableEndpointSide.Start,
+                                    cable.Start),
+                                ToEndpoint(
+                                    DataCenterPhysicalCableEndpointSide.End,
+                                    cable.End)))
+                    .ToArray();
+
+            return new DataCenterCablePersistenceSnapshot(
+                raw.SourcePath,
+                raw.SourceLength,
+                raw.SourceLastWriteTimeUtc,
+                cables,
+                raw.ServerIDs,
+                raw.SwitchIDs,
+                raw.RouterIDs,
+                raw.FirewallIDs,
+                raw.PatchPanelIDs,
+                raw.CustomerIDs);
+        }
+
+        private static DataCenterCablePersistenceEndpoint ToEndpoint(
+            DataCenterPhysicalCableEndpointSide side,
+            HelperEndpoint endpoint)
+        {
+            return new DataCenterCablePersistenceEndpoint(
+                side,
+                endpoint.LinkType,
+                endpoint.ServerID,
+                endpoint.SwitchID,
+                endpoint.CustomerID,
+                endpoint.Position);
+        }
+
+        private sealed class HelperSnapshot
+        {
+            public string SourcePath { get; set; } =
+                string.Empty;
+            public long SourceLength { get; set; }
+            public DateTime SourceLastWriteTimeUtc { get; set; }
+            public int NetworkSaveDataCount { get; set; }
+            public HelperCable[] Cables { get; set; } =
+                Array.Empty<HelperCable>();
+            public string[] ServerIDs { get; set; } =
+                Array.Empty<string>();
+            public string[] SwitchIDs { get; set; } =
+                Array.Empty<string>();
+            public string[] RouterIDs { get; set; } =
+                Array.Empty<string>();
+            public string[] FirewallIDs { get; set; } =
+                Array.Empty<string>();
+            public string[] PatchPanelIDs { get; set; } =
+                Array.Empty<string>();
+            public int[] CustomerIDs { get; set; } =
+                Array.Empty<int>();
+        }
+
+        private sealed class HelperCable
+        {
+            public int CableID { get; set; }
+            public HelperEndpoint Start { get; set; } =
+                new();
+            public HelperEndpoint End { get; set; } =
+                new();
+        }
+
+        private sealed class HelperEndpoint
+        {
+            public int LinkType { get; set; }
+            public string ServerID { get; set; } =
+                string.Empty;
+            public string SwitchID { get; set; } =
+                string.Empty;
+            public int? CustomerID { get; set; }
+            public string Position { get; set; } =
+                string.Empty;
+        }
     }
 
     private void RunGameThreadProbe()
@@ -5204,5 +5555,18 @@ public sealed class TestModule : IDCMLModule
 
         public int CablePersistenceProbeDelayFrames { get; set; } =
             900;
+
+        public bool EnablePhysicalCablePersistenceSource { get; set; }
+
+        public string PhysicalCableSavePath { get; set; } =
+            string.Empty;
+
+        public string PhysicalCableHelperHostPath { get; set; } =
+            string.Empty;
+
+        public string PhysicalCableHelperDllPath { get; set; } =
+            string.Empty;
+
+        public bool EnablePhysicalCablePersistenceSourceProbe { get; set; }
     }
 }
