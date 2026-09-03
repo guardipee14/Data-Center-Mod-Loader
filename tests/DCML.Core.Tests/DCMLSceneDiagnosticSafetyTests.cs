@@ -73,12 +73,94 @@ public sealed class DCMLSceneDiagnosticSafetyTests
             "RunGameTypeCatalog(",
             "RunGameResourceDiscovery(",
             "RunGameTypeInspection(",
-            "RunHardwareSnapshotsAsync("
+            "RunHardwareSnapshotsAsync(",
+            "RunCablePersistenceMetadataProbe("
         })
         {
             Assert.DoesNotContain(
                 forbiddenCall,
                 callback);
+        }
+    }
+
+    [Fact]
+    public void TestModule_CablePersistenceMetadataProbeUsesMetadataOnlyServices()
+    {
+        string solutionRoot =
+            Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    ".."));
+
+        string sourcePath =
+            Path.Combine(
+                solutionRoot,
+                "src",
+                "DCML.TestModule",
+                "TestModule.cs");
+
+        Assert.True(
+            File.Exists(
+                sourcePath),
+            "DCML.TestModule TestModule.cs was not found.");
+
+        string source =
+            File.ReadAllText(
+                sourcePath);
+
+        Assert.Contains(
+            "public bool EnableCablePersistenceMetadataProbe { get; set; }",
+            source);
+
+        int probeStart =
+            source.IndexOf(
+                "private void RunCablePersistenceMetadataProbe(",
+                StringComparison.Ordinal);
+
+        int writerStart =
+            source.IndexOf(
+                "private string WriteCablePersistenceMetadata(",
+                probeStart,
+                StringComparison.Ordinal);
+
+        Assert.True(
+            probeStart >= 0 &&
+            writerStart > probeStart,
+            "The cable persistence metadata probe was not found.");
+
+        string probe =
+            source.Substring(
+                probeStart,
+                writerStart - probeStart);
+
+        Assert.Contains(
+            "_gameTypeCatalog.Find(",
+            probe);
+
+        Assert.Contains(
+            "_gameTypeInspector.Inspect(",
+            probe);
+
+        foreach (string forbiddenText in new[]
+        {
+            "_gameComponentStateReader",
+            "_gameObjectDiscovery",
+            "_dataCenterApi",
+            "ReadAsync(",
+            "CaptureAsync(",
+            "CollectPatchPanelChainCables",
+            "LoadData(",
+            "SetUpBase(",
+            "SetUpApp("
+        })
+        {
+            Assert.DoesNotContain(
+                forbiddenText,
+                probe);
         }
     }
 }

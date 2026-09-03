@@ -108,6 +108,15 @@ public sealed class TestModule : IDCMLModule
     private string _automaticSceneDiagnosticLastError =
         string.Empty;
 
+    private int _cablePersistenceMetadataProbeGeneration;
+
+    private bool _cablePersistenceMetadataProbePending;
+
+    private int _cablePersistenceMetadataProbeFramesRemaining;
+
+    private string _cablePersistenceMetadataProbeScene =
+        string.Empty;
+
     private int _eventsReceived;
 
     private int _sceneEventsReceived;
@@ -245,6 +254,29 @@ public sealed class TestModule : IDCMLModule
         string.Empty;
 
     private string _lastGameTypeInspectionSummary =
+        string.Empty;
+
+    private int _cablePersistenceMetadataProbeRuns;
+
+    private string _lastCablePersistenceMetadataProbeScene =
+        string.Empty;
+
+    private int _lastCablePersistenceMetadataCandidateTypeCount;
+
+    private int _lastCablePersistenceMetadataInspectedTypeCount;
+
+    private int _lastCablePersistenceMetadataRelevantMemberCount;
+
+    private string _lastCablePersistenceMetadataPath =
+        string.Empty;
+
+    private string _lastCablePersistenceMetadataCandidateTypes =
+        string.Empty;
+
+    private string _lastCablePersistenceMetadataRelevantMembers =
+        string.Empty;
+
+    private string _lastCablePersistenceMetadataError =
         string.Empty;
 
     private int _gameThreadProbeRuns;
@@ -699,6 +731,9 @@ public sealed class TestModule : IDCMLModule
         CancelAutomaticSceneDiagnostics(
             "Module stopping.");
 
+        CancelCablePersistenceMetadataProbe(
+            "Module stopping.");
+
         _probeSubscription?.Dispose();
         _probeSubscription =
             null;
@@ -830,6 +865,9 @@ public sealed class TestModule : IDCMLModule
             CancelAutomaticSceneDiagnostics(
                 "Scene unloaded.");
 
+            CancelCablePersistenceMetadataProbe(
+                "Scene unloaded.");
+
             return;
         }
 
@@ -841,6 +879,15 @@ public sealed class TestModule : IDCMLModule
         )
         {
             return;
+        }
+
+        if (
+            _settings?.EnableCablePersistenceMetadataProbe ==
+                true
+        )
+        {
+            ScheduleCablePersistenceMetadataProbe(
+                eventData.SceneName);
         }
 
         if (
@@ -1081,6 +1128,571 @@ public sealed class TestModule : IDCMLModule
         _logger?.Info(
             "Automatic scene diagnostics canceled. " +
             reason);
+    }
+
+    private void ScheduleCablePersistenceMetadataProbe(
+        string sceneName)
+    {
+        if (
+            _gameThread is null ||
+            _settings is null
+        )
+        {
+            return;
+        }
+
+        int generation =
+            ++_cablePersistenceMetadataProbeGeneration;
+
+        _cablePersistenceMetadataProbePending =
+            true;
+
+        _cablePersistenceMetadataProbeScene =
+            sceneName;
+
+        _cablePersistenceMetadataProbeFramesRemaining =
+            Math.Max(
+                1,
+                _settings.CablePersistenceProbeDelayFrames);
+
+        _logger?.Info(
+            $"Cable persistence metadata probe scheduled for '{sceneName}' " +
+            $"after {_cablePersistenceMetadataProbeFramesRemaining} update frame(s). " +
+            "The probe uses type metadata only.");
+
+        _gameThread.Post(
+            () =>
+                AdvanceCablePersistenceMetadataProbe(
+                    generation));
+    }
+
+    private void AdvanceCablePersistenceMetadataProbe(
+        int generation)
+    {
+        if (
+            !_cablePersistenceMetadataProbePending ||
+            generation !=
+                _cablePersistenceMetadataProbeGeneration ||
+            _gameThread is null ||
+            _settings is null
+        )
+        {
+            return;
+        }
+
+        if (
+            _gameLifecycle is null ||
+            !_gameLifecycle.HasCurrentScene ||
+            !string.Equals(
+                _gameLifecycle.CurrentSceneName,
+                _cablePersistenceMetadataProbeScene,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            CancelCablePersistenceMetadataProbe(
+                "The active scene changed before the metadata probe ran.");
+
+            return;
+        }
+
+        if (
+            _cablePersistenceMetadataProbeFramesRemaining >
+                0
+        )
+        {
+            _cablePersistenceMetadataProbeFramesRemaining--;
+
+            _gameThread.Post(
+                () =>
+                    AdvanceCablePersistenceMetadataProbe(
+                        generation));
+
+            return;
+        }
+
+        _cablePersistenceMetadataProbePending =
+            false;
+
+        RunCablePersistenceMetadataProbe(
+            _cablePersistenceMetadataProbeScene);
+
+        if (
+            _configuration is not null &&
+            _settings is not null
+        )
+        {
+            _settings.EnableCablePersistenceMetadataProbe =
+                false;
+
+            _configuration.Save(
+                _settings);
+        }
+    }
+
+    private void CancelCablePersistenceMetadataProbe(
+        string reason)
+    {
+        if (!_cablePersistenceMetadataProbePending)
+        {
+            _cablePersistenceMetadataProbeGeneration++;
+
+            return;
+        }
+
+        _cablePersistenceMetadataProbePending =
+            false;
+
+        _cablePersistenceMetadataProbeGeneration++;
+
+        _logger?.Info(
+            "Cable persistence metadata probe canceled. " +
+            reason);
+    }
+
+    private void RunCablePersistenceMetadataProbe(
+        string sceneName)
+    {
+        _cablePersistenceMetadataProbeRuns++;
+        _lastCablePersistenceMetadataProbeScene =
+            sceneName;
+        _lastCablePersistenceMetadataCandidateTypeCount =
+            0;
+        _lastCablePersistenceMetadataInspectedTypeCount =
+            0;
+        _lastCablePersistenceMetadataRelevantMemberCount =
+            0;
+        _lastCablePersistenceMetadataPath =
+            string.Empty;
+        _lastCablePersistenceMetadataCandidateTypes =
+            string.Empty;
+        _lastCablePersistenceMetadataRelevantMembers =
+            string.Empty;
+        _lastCablePersistenceMetadataError =
+            string.Empty;
+
+        if (
+            _context is null ||
+            _gameTypeCatalog is null ||
+            _gameTypeInspector is null
+        )
+        {
+            _lastCablePersistenceMetadataError =
+                "The metadata services required by the cable persistence probe are unavailable.";
+
+            AppendProof(
+                "CablePersistenceMetadataProbeError");
+
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<DCMLGameTypeInfo> cableTypes =
+                _gameTypeCatalog.Find(
+                    new DCMLGameTypeQuery(
+                        fullNameStartsWith:
+                            "Il2Cpp.",
+                        nameContains:
+                            "Cable",
+                        maxResults:
+                            512));
+
+            IReadOnlyList<DCMLGameTypeInfo> saveTypes =
+                _gameTypeCatalog.Find(
+                    new DCMLGameTypeQuery(
+                        fullNameStartsWith:
+                            "Il2Cpp.",
+                        nameContains:
+                            "Save",
+                        maxResults:
+                            2048));
+
+            string[] candidateTypeNames =
+                cableTypes
+                    .Select(
+                        value =>
+                            value.FullName)
+                    .Concat(
+                        saveTypes
+                            .Where(
+                                value =>
+                                    IsRelevantCablePersistenceSaveType(
+                                        value.FullName))
+                            .Select(
+                                value =>
+                                    value.FullName))
+                    .Concat(
+                        new[]
+                        {
+                            "Il2Cpp.NetworkSaveData",
+                            "Il2Cpp.CableLink"
+                        })
+                    .Where(
+                        value =>
+                            !string.IsNullOrWhiteSpace(
+                                value))
+                    .Distinct(
+                        StringComparer.Ordinal)
+                    .OrderBy(
+                        value =>
+                            value,
+                        StringComparer.Ordinal)
+                    .Take(
+                        256)
+                    .ToArray();
+
+            _lastCablePersistenceMetadataCandidateTypeCount =
+                candidateTypeNames.Length;
+
+            _lastCablePersistenceMetadataCandidateTypes =
+                string.Join(
+                    ", ",
+                    candidateTypeNames);
+
+            var inspections =
+                new List<DCMLGameTypeInspection>();
+
+            foreach (
+                string typeName in
+                candidateTypeNames)
+            {
+                DCMLGameTypeInspection? inspection =
+                    _gameTypeInspector.Inspect(
+                        new DCMLGameTypeInspectionQuery(
+                            typeName,
+                            includeInheritedMembers:
+                                false,
+                            maxMembers:
+                                4096));
+
+                if (inspection is not null)
+                {
+                    inspections.Add(
+                        inspection);
+                }
+            }
+
+            _lastCablePersistenceMetadataInspectedTypeCount =
+                inspections.Count;
+
+            DCMLGameTypeMemberInfo[] relevantMembers =
+                inspections
+                    .SelectMany(
+                        value =>
+                            value.Members)
+                    .Where(
+                        value =>
+                            !value.IsInherited &&
+                            IsRelevantCablePersistenceMemberName(
+                                value.Name))
+                    .OrderBy(
+                        value =>
+                            value.DeclaringTypeFullName,
+                        StringComparer.Ordinal)
+                    .ThenBy(
+                        value =>
+                            value.Kind,
+                        StringComparer.Ordinal)
+                    .ThenBy(
+                        value =>
+                            value.Name,
+                        StringComparer.Ordinal)
+                    .ToArray();
+
+            _lastCablePersistenceMetadataRelevantMemberCount =
+                relevantMembers.Length;
+
+            _lastCablePersistenceMetadataRelevantMembers =
+                string.Join(
+                    " || ",
+                    relevantMembers
+                        .Take(96)
+                        .Select(
+                            value =>
+                                value.DeclaringTypeFullName +
+                                "::" +
+                                value.Signature));
+
+            _lastCablePersistenceMetadataPath =
+                WriteCablePersistenceMetadata(
+                    sceneName,
+                    candidateTypeNames,
+                    inspections);
+
+            AppendProof(
+                "CablePersistenceMetadataProbe");
+
+            _logger?.Info(
+                "Cable persistence metadata probe for scene '" +
+                sceneName +
+                "' inspected " +
+                inspections.Count +
+                " of " +
+                candidateTypeNames.Length +
+                " candidate type(s); relevant member count=" +
+                relevantMembers.Length +
+                ".");
+        }
+        catch (Exception exception)
+        {
+            _lastCablePersistenceMetadataError =
+                exception.GetType().FullName +
+                ": " +
+                exception.Message;
+
+            AppendProof(
+                "CablePersistenceMetadataProbeError");
+
+            _logger?.Error(
+                "Cable persistence metadata probe failed for scene '" +
+                sceneName +
+                "'.");
+
+            _logger?.Error(
+                exception.ToString());
+        }
+    }
+
+    private string WriteCablePersistenceMetadata(
+        string sceneName,
+        IReadOnlyList<string> candidateTypeNames,
+        IReadOnlyList<DCMLGameTypeInspection> inspections)
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException(
+                "The module context is unavailable.");
+        }
+
+        Directory.CreateDirectory(
+            _context.DataDirectory);
+
+        string safeSceneName =
+            MakeSafeFileName(
+                string.IsNullOrWhiteSpace(
+                    sceneName)
+                    ? "unnamed-scene"
+                    : sceneName);
+
+        string path =
+            Path.Combine(
+                _context.DataDirectory,
+                "DCML.CablePersistenceMetadata." +
+                safeSceneName +
+                ".log");
+
+        var byType =
+            inspections
+                .ToDictionary(
+                    value =>
+                        value.TypeFullName,
+                    StringComparer.Ordinal);
+
+        var lines =
+            new List<string>
+            {
+                "DCML Cable Persistence Metadata Probe",
+                $"UTC: {DateTime.UtcNow:O}",
+                $"Scene: {sceneName}",
+                $"CandidateTypeCount: {candidateTypeNames.Count}",
+                $"InspectedTypeCount: {inspections.Count}",
+                "Mode: metadata-only",
+                "PhysicalNetworkEdgesEmitted: False",
+                string.Empty
+            };
+
+        foreach (
+            string typeName in
+            candidateTypeNames)
+        {
+            lines.Add(
+                "TYPE: " +
+                typeName);
+
+            if (
+                !byType.TryGetValue(
+                    typeName,
+                    out DCMLGameTypeInspection? inspection)
+            )
+            {
+                lines.Add(
+                    "Status: NOT FOUND");
+
+                lines.Add(
+                    string.Empty);
+
+                continue;
+            }
+
+            lines.Add(
+                "Status: FOUND");
+
+            lines.Add(
+                "Assembly: " +
+                inspection.AssemblyName);
+
+            lines.Add(
+                "BaseTypes: " +
+                FormatNameList(
+                    inspection.BaseTypeFullNames));
+
+            lines.Add(
+                "Interfaces: " +
+                FormatNameList(
+                    inspection.InterfaceFullNames));
+
+            lines.Add(
+                "TotalMemberCount: " +
+                inspection.TotalMemberCount);
+
+            lines.Add(
+                "AtMemberLimit: " +
+                inspection.AtMemberLimit);
+
+            lines.Add(
+                string.Empty);
+
+            AppendMemberSection(
+                lines,
+                "DIRECT INSTANCE FIELDS",
+                inspection.Fields
+                    .Where(
+                        value =>
+                            !value.IsInherited &&
+                            !value.IsStatic)
+                    .ToArray());
+
+            AppendMemberSection(
+                lines,
+                "DIRECT PROPERTIES",
+                inspection.Properties
+                    .Where(
+                        value =>
+                            !value.IsInherited &&
+                            !value.IsStatic)
+                    .ToArray());
+
+            AppendMemberSection(
+                lines,
+                "PERSISTENCE / ENDPOINT METHODS",
+                inspection.Methods
+                    .Where(
+                        value =>
+                            !value.IsInherited &&
+                            IsRelevantCablePersistenceMemberName(
+                                value.Name))
+                    .ToArray());
+        }
+
+        File.WriteAllLines(
+            path,
+            lines);
+
+        return path;
+    }
+
+    private static bool IsRelevantCablePersistenceSaveType(
+        string typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+        {
+            return false;
+        }
+
+        foreach (
+            string keyword in
+            new[]
+            {
+                "Network",
+                "Cable",
+                "Server",
+                "Switch",
+                "Router",
+                "Firewall",
+                "Patch",
+                "SFP",
+                "Internet",
+                "Port",
+                "Connection",
+                "Link"
+            })
+        {
+            if (
+                typeName.IndexOf(
+                    keyword,
+                    StringComparison.OrdinalIgnoreCase) >= 0
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsRelevantCablePersistenceMemberName(
+        string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        if (
+            string.Equals(
+                name,
+                "id",
+                StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith(
+                "Id",
+                StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith(
+                "IDs",
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return true;
+        }
+
+        foreach (
+            string keyword in
+            new[]
+            {
+                "Cable",
+                "Start",
+                "End",
+                "Source",
+                "Target",
+                "Parent",
+                "Port",
+                "Server",
+                "Switch",
+                "Router",
+                "Firewall",
+                "Patch",
+                "Internet",
+                "SFP",
+                "Link",
+                "Connection",
+                "Network",
+                "Device",
+                "Save",
+                "Load",
+                "Serialize",
+                "Deserialize"
+            })
+        {
+            if (
+                name.IndexOf(
+                    keyword,
+                    StringComparison.OrdinalIgnoreCase) >= 0
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task RunHardwareSnapshotsAsync(
@@ -4252,7 +4864,9 @@ public sealed class TestModule : IDCMLModule
                     $"LastLifecycleStage: {_settings.LastLifecycleStage}",
                     $"EnableAutomaticSceneDiagnostics: {_settings.EnableAutomaticSceneDiagnostics}",
                     $"SceneDiagnosticDelayFrames: {_settings.SceneDiagnosticDelayFrames}",
-                    $"EnableHeavyAutomaticSceneDiagnostics: {_settings.EnableHeavyAutomaticSceneDiagnostics}");
+                    $"EnableHeavyAutomaticSceneDiagnostics: {_settings.EnableHeavyAutomaticSceneDiagnostics}",
+                    $"EnableCablePersistenceMetadataProbe: {_settings.EnableCablePersistenceMetadataProbe}",
+                    $"CablePersistenceProbeDelayFrames: {_settings.CablePersistenceProbeDelayFrames}");
 
         var eventLines =
             string.Join(
@@ -4278,7 +4892,10 @@ public sealed class TestModule : IDCMLModule
                     $"AutomaticSceneDiagnosticSchedules: {_automaticSceneDiagnosticSchedules}",
                     $"AutomaticSceneDiagnosticCompletions: {_automaticSceneDiagnosticCompletions}",
                     $"AutomaticSceneDiagnosticCancellations: {_automaticSceneDiagnosticCancellations}",
-                    $"AutomaticSceneDiagnosticLastError: {_automaticSceneDiagnosticLastError}");
+                    $"AutomaticSceneDiagnosticLastError: {_automaticSceneDiagnosticLastError}",
+                    $"CablePersistenceMetadataProbePending: {_cablePersistenceMetadataProbePending}",
+                    $"CablePersistenceMetadataProbeScene: {_cablePersistenceMetadataProbeScene}",
+                    $"CablePersistenceMetadataProbeFramesRemaining: {_cablePersistenceMetadataProbeFramesRemaining}");
 
         var discoveryLines =
             string.Join(
@@ -4359,6 +4976,19 @@ public sealed class TestModule : IDCMLModule
                 $"LastGameTypeInspectionPath: {_lastGameTypeInspectionPath}",
                 $"LastGameTypeInspectionError: {_lastGameTypeInspectionError}",
                 $"LastGameTypeInspectionSummary: {_lastGameTypeInspectionSummary}");
+
+        var cablePersistenceMetadataLines =
+            string.Join(
+                Environment.NewLine,
+                $"CablePersistenceMetadataProbeRuns: {_cablePersistenceMetadataProbeRuns}",
+                $"LastCablePersistenceMetadataProbeScene: {_lastCablePersistenceMetadataProbeScene}",
+                $"LastCablePersistenceMetadataCandidateTypeCount: {_lastCablePersistenceMetadataCandidateTypeCount}",
+                $"LastCablePersistenceMetadataInspectedTypeCount: {_lastCablePersistenceMetadataInspectedTypeCount}",
+                $"LastCablePersistenceMetadataRelevantMemberCount: {_lastCablePersistenceMetadataRelevantMemberCount}",
+                $"LastCablePersistenceMetadataPath: {_lastCablePersistenceMetadataPath}",
+                $"LastCablePersistenceMetadataCandidateTypes: {_lastCablePersistenceMetadataCandidateTypes}",
+                $"LastCablePersistenceMetadataRelevantMembers: {_lastCablePersistenceMetadataRelevantMembers}",
+                $"LastCablePersistenceMetadataError: {_lastCablePersistenceMetadataError}");
 
         var gameThreadLines =
             string.Join(
@@ -4492,6 +5122,7 @@ public sealed class TestModule : IDCMLModule
                 gameTypeCatalogLines,
                 gameResourceDiscoveryLines,
                 gameTypeInspectionLines,
+                cablePersistenceMetadataLines,
                 gameThreadLines,
                 hardwareSnapshotLines,
                 string.Empty,
@@ -4568,5 +5199,10 @@ public sealed class TestModule : IDCMLModule
             DefaultAutomaticSceneDiagnosticDelayFrames;
 
         public bool EnableHeavyAutomaticSceneDiagnostics { get; set; }
+
+        public bool EnableCablePersistenceMetadataProbe { get; set; }
+
+        public int CablePersistenceProbeDelayFrames { get; set; } =
+            900;
     }
 }
