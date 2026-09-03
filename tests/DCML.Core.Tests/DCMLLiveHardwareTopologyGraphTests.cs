@@ -44,12 +44,12 @@ public sealed class DCMLLiveHardwareTopologyGraphTests
                 new[]
                 {
                     new DataCenterHardwareTopologyEdge(
-                        "sfp-link",
+                        "test-link",
                         Ref(1, "SFP1", "Il2Cpp.SFPModule"),
                         Ref(10, "Cable1", "Il2Cpp.CableLink"),
                         true),
                     new DataCenterHardwareTopologyEdge(
-                        "sfp-link",
+                        "test-link",
                         Ref(2, "SFP2", "Il2Cpp.SFPModule"),
                         Ref(20, "Cable2", "Il2Cpp.CableLink"),
                         false)
@@ -60,7 +60,7 @@ public sealed class DCMLLiveHardwareTopologyGraphTests
     }
 
     [Fact]
-    public void Build_UsesOnlyLiveSfpAndCableInstancesAsNodes()
+    public void Build_UsesOnlyLiveSfpAndSfpSlotInstancesAsNodes()
     {
         DataCenterHardwareTopologyGraph graph =
             DataCenterHardwareTopology.Build(
@@ -68,11 +68,11 @@ public sealed class DCMLLiveHardwareTopologyGraphTests
 
         Assert.Equal(2, graph.Nodes.Count);
         Assert.Contains(graph.Nodes, node => node.Kind == "sfp");
-        Assert.Contains(graph.Nodes, node => node.Kind == "cable");
+        Assert.Contains(graph.Nodes, node => node.Kind == "sfp-slot");
     }
 
     [Fact]
-    public void Build_CreatesSfpLinkEdge()
+    public void Build_CreatesSfpModuleInsertionEdge()
     {
         DataCenterHardwareTopologyGraph graph =
             DataCenterHardwareTopology.Build(
@@ -81,9 +81,15 @@ public sealed class DCMLLiveHardwareTopologyGraphTests
         DataCenterHardwareTopologyEdge edge =
             Assert.Single(graph.Edges);
 
-        Assert.Equal("sfp-link", edge.Relationship);
+        Assert.Equal(DataCenterHardwareTopologyRelationships.SfpModuleInsertion, edge.Relationship);
         Assert.Equal(101, edge.Source.InstanceId);
         Assert.Equal(201, edge.Target.InstanceId);
+        Assert.Equal(
+            DataCenterHardwareTopologyEdgeKind.Structural,
+            edge.Kind);
+        Assert.False(edge.IsNetworkConnection);
+        Assert.Single(graph.StructuralEdges);
+        Assert.Empty(graph.NetworkConnectionEdges);
     }
 
     [Fact]

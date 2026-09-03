@@ -612,7 +612,7 @@ public sealed class DataCenterHardwareTopology :
                     cable.InstanceId,
                     cable.Name,
                     CableTypeName,
-                    "cable"));
+                    "sfp-slot"));
         }
 
         var edges =
@@ -662,7 +662,7 @@ public sealed class DataCenterHardwareTopology :
             edges.Add(
                 new DataCenterHardwareTopologyEdge(
                     relationship:
-                        "sfp-link",
+                        DataCenterHardwareTopologyRelationships.SfpModuleInsertion,
                     source:
                         new DataCenterHardwareReference(
                             sfp.ComponentInstanceId,
@@ -677,7 +677,9 @@ public sealed class DataCenterHardwareTopology :
                     targetLocation:
                         location,
                     targetCable:
-                        targetCableDetail));
+                        targetCableDetail,
+                    kind:
+                        DataCenterHardwareTopologyEdgeKind.Structural));
         }
 
         return

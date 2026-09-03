@@ -11,6 +11,19 @@ public enum DataCenterHardwareTopologyTargetLocation
     NonSceneObject = 2
 }
 
+public enum DataCenterHardwareTopologyEdgeKind
+{
+    Unknown = 0,
+    Structural = 1,
+    NetworkConnection = 2
+}
+
+public static class DataCenterHardwareTopologyRelationships
+{
+    public const string SfpModuleInsertion =
+        "sfp-module-insertion";
+}
+
 public sealed class DataCenterHardwareTopologyNode
 {
     public DataCenterHardwareTopologyNode(
@@ -50,7 +63,9 @@ public sealed class DataCenterHardwareTopologyEdge
         string? resolvedTargetName = null,
         DataCenterHardwareTopologyTargetLocation targetLocation =
             DataCenterHardwareTopologyTargetLocation.Unknown,
-        DataCenterCableSnapshot? targetCable = null)
+        DataCenterCableSnapshot? targetCable = null,
+        DataCenterHardwareTopologyEdgeKind kind =
+            DataCenterHardwareTopologyEdgeKind.Unknown)
     {
         if (string.IsNullOrWhiteSpace(relationship))
         {
@@ -75,6 +90,7 @@ public sealed class DataCenterHardwareTopologyEdge
         ResolvedTargetName = resolvedTargetName ?? string.Empty;
         TargetLocation = targetLocation;
         TargetCable = targetCable;
+        Kind = kind;
     }
 
     public string Relationship { get; }
@@ -94,6 +110,12 @@ public sealed class DataCenterHardwareTopologyEdge
             DataCenterHardwareTopologyTargetLocation.Unknown;
 
     public DataCenterCableSnapshot? TargetCable { get; }
+
+    public DataCenterHardwareTopologyEdgeKind Kind { get; }
+
+    public bool IsNetworkConnection =>
+        Kind ==
+            DataCenterHardwareTopologyEdgeKind.NetworkConnection;
 }
 
 public sealed class DataCenterHardwareTopologyGraph
@@ -182,6 +204,22 @@ public sealed class DataCenterHardwareTopologyGraph
 
     public IReadOnlyList<DataCenterHardwareTopologyEdge> Edges =>
         _edges;
+
+    public IReadOnlyList<DataCenterHardwareTopologyEdge> StructuralEdges =>
+        _edges
+            .Where(
+                value =>
+                    value.Kind ==
+                        DataCenterHardwareTopologyEdgeKind.Structural)
+            .ToArray();
+
+    public IReadOnlyList<DataCenterHardwareTopologyEdge> NetworkConnectionEdges =>
+        _edges
+            .Where(
+                value =>
+                    value.Kind ==
+                        DataCenterHardwareTopologyEdgeKind.NetworkConnection)
+            .ToArray();
 
     public IReadOnlyList<DataCenterHardwareTopologyEdge> ResolvedEdges =>
         _edges
