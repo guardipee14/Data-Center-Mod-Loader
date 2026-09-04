@@ -246,6 +246,126 @@ public sealed class DCMLReleaseArtifactValidationTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Validator_DefinesPersistenceHelperIsolationBoundary()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "UserData/DCML/Modules/DCML.TestModule/PersistenceHelper/",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "$persistenceHelperRoot",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "\"${persistenceHelperRoot}DCML.Persistence.Helper.dll\"",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            "$persistenceHelperRoot + 'DCML.Persistence.Helper.dll',",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_RequiresRiskyHelperDependenciesInsideBoundary()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "System.Formats.Nrbf.dll",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "System.Reflection.Metadata.dll",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "DCML.Persistence.Helper.deps.json",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_DerivesPackagedHelperDllSetFromFinalZip()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "$helperDependencyNames",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "$archive.Entries",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "EndsWith(",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_FailsClosedWhenHelperDependencyEscapesBoundary()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "Persistence helper dependency escaped isolation boundary.",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "$helperBoundaryNames",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_ReportsPersistenceHelperIsolationResults()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "PersistenceHelperIsolationPassed = $true",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "PersistenceHelperDependencyCount = $isolatedHelperDependencies.Count",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "PersistenceHelperRiskyDependenciesPresent = $true",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "PersistenceHelperEscapedDependencyCount = 0",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string ReadTool(
         string fileName)
     {

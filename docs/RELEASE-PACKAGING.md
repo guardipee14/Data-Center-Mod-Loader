@@ -105,7 +105,7 @@ Standalone validation can also be run explicitly:
 
 If `-ExpectedSourceCommit` is omitted, the validator uses the current repository `HEAD`. For historical artifacts, pass the expected source commit explicitly.
 
-The release gate now validates source identity, outer package integrity, and declared shared-assembly equality. Persistence-helper dependency isolation remains a separate release-gate milestone.
+The release gate now validates source identity, outer package integrity, declared shared-assembly equality, and persistence-helper dependency isolation.
 
 ## Shared-assembly hash gate
 
@@ -126,6 +126,21 @@ The comparison is performed against ZIP entries from the final release artifact,
 The shared pairs are declared explicitly in `tools/Test-DCMLReleaseArtifact.ps1`. Future intentional shared copies should be added to that declaration rather than inferred from filenames or directory proximity.
 
 A shared-assembly mismatch fails the same artifact-validation gate that already checks the source commit and outer package SHA-256.
+## Persistence-helper dependency-isolation gate
+
+The final release ZIP must keep the .NET 8 persistence helper and its private dependency closure under:
+
+```text
+UserData/DCML/Modules/DCML.TestModule/PersistenceHelper/
+```
+
+The validator requires the known risky runtime dependencies `System.Formats.Nrbf.dll` and `System.Reflection.Metadata.dll` inside that boundary, along with the helper DLL and its `.deps.json` / `.runtimeconfig.json` metadata.
+
+The gate then treats every DLL actually packaged inside `PersistenceHelper/` as helper-private and rejects any same-named assembly found elsewhere in the ZIP, including `Mods/`, `UserLibs/`, or the TestModule root.
+
+This keeps the NRBF dependency closure out of the MelonLoader .NET 6 load context while allowing the out-of-process .NET 8 helper to own those dependencies.
+
+The comparison is performed against the final ZIP, not only staging output.
 ## Package layout
 
 The ZIP root is the Data Center game root layout:
@@ -186,9 +201,7 @@ The repository-owned release path now includes:
 
 - automatic source-commit validation;
 - outer ZIP SHA-256 and checksum-file validation;
-- explicit shared-assembly hash equality checks.
+- explicit shared-assembly hash equality checks;
+- persistence-helper dependency-isolation checks.
 
-Separate roadmap items still cover:
-
-- persistence-helper dependency-isolation checks;
-- the release checklist and live-proof policy.
+The remaining release-engineering roadmap item covers the release checklist and live-proof policy.

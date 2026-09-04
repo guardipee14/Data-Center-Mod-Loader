@@ -87,6 +87,32 @@ function Get-ZipEntrySha256 {
     }
 }
 
+function Get-ZipEntryText {
+    param(
+        [Parameter(Mandatory)]
+        $Entry
+    )
+
+    $stream =
+        $Entry.Open()
+
+    $reader =
+        [System.IO.StreamReader]::new(
+            $stream,
+            [System.Text.Encoding]::UTF8,
+            $true,
+            4096,
+            $false)
+
+    try {
+        return $reader.ReadToEnd()
+    }
+    finally {
+        $reader.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Get-SingleZipEntry {
     param(
         [Parameter(Mandatory)]
@@ -430,6 +456,146 @@ Secondary SHA-256: $secondarySha256
                 Matches = $true
             }
     }
+
+    $persistenceHelperRoot =
+        'UserData/DCML/Modules/DCML.TestModule/PersistenceHelper/'
+
+    $requiredHelperPaths =
+        @(
+            "${persistenceHelperRoot}DCML.Persistence.Helper.dll"
+            "${persistenceHelperRoot}DCML.Persistence.Helper.deps.json"
+            "${persistenceHelperRoot}DCML.Persistence.Helper.runtimeconfig.json"
+            "${persistenceHelperRoot}System.Formats.Nrbf.dll"
+            "${persistenceHelperRoot}System.Reflection.Metadata.dll"
+        )
+
+    foreach ($requiredHelperPath in $requiredHelperPaths) {
+        $null =
+            Get-SingleZipEntry `
+                -Archive $archive `
+                -Path $requiredHelperPath
+    }
+
+    $helperDepsEntry =
+        Get-SingleZipEntry `
+            -Archive $archive `
+            -Path (
+                $persistenceHelperRoot +
+                'DCML.Persistence.Helper.deps.json'
+            )
+
+    $helperDepsText =
+        Get-ZipEntryText `
+            -Entry $helperDepsEntry
+
+    if (-not $helperDepsText.Contains('System.Formats.Nrbf')) {
+        throw 'Persistence helper deps metadata does not include System.Formats.Nrbf.'
+    }
+
+    if (-not $helperDepsText.Contains('System.Reflection.Metadata')) {
+        throw 'Persistence helper deps metadata does not include System.Reflection.Metadata.'
+    }
+
+    $helperDependencyNames =
+        [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($entry in $archive.Entries) {
+        if ([string]::IsNullOrWhiteSpace($entry.Name)) {
+            continue
+        }
+
+        $normalizedEntryPath =
+            $entry.FullName.Replace(
+                '\',
+                '/')
+
+        if (
+            $normalizedEntryPath.StartsWith(
+                $persistenceHelperRoot,
+                [System.StringComparison]::Ordinal) -and
+            $entry.Name.EndsWith(
+                '.dll',
+                [System.StringComparison]::OrdinalIgnoreCase)
+        ) {
+            $null =
+                $helperDependencyNames.Add(
+                    $entry.Name)
+        }
+    }
+
+    if ($helperDependencyNames.Count -eq 0) {
+        throw 'Persistence helper package contains no DLL runtime assets.'
+    }
+
+    foreach (
+        $requiredDependencyName in
+        @(
+            'DCML.Persistence.Helper.dll'
+            'System.Formats.Nrbf.dll'
+            'System.Reflection.Metadata.dll'
+        )
+    ) {
+        if (-not $helperDependencyNames.Contains($requiredDependencyName)) {
+            throw "Persistence helper package is missing required isolated dependency: $requiredDependencyName"
+        }
+    }
+
+    $helperBoundaryNames =
+        [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($dependencyName in $helperDependencyNames) {
+        $null =
+            $helperBoundaryNames.Add(
+                $dependencyName)
+    }
+
+    foreach (
+        $metadataName in
+        @(
+            'DCML.Persistence.Helper.exe'
+            'DCML.Persistence.Helper.deps.json'
+            'DCML.Persistence.Helper.runtimeconfig.json'
+        )
+    ) {
+        $null =
+            $helperBoundaryNames.Add(
+                $metadataName)
+    }
+
+    foreach ($entry in $archive.Entries) {
+        if (
+            [string]::IsNullOrWhiteSpace($entry.Name) -or
+            -not $helperBoundaryNames.Contains($entry.Name)
+        ) {
+            continue
+        }
+
+        $normalizedEntryPath =
+            $entry.FullName.Replace(
+                '\',
+                '/')
+
+        if (
+            -not $normalizedEntryPath.StartsWith(
+                $persistenceHelperRoot,
+                [System.StringComparison]::Ordinal)
+        ) {
+            throw @"
+Persistence helper dependency escaped isolation boundary.
+Dependency: $($entry.Name)
+Allowed root: $persistenceHelperRoot
+Found: $normalizedEntryPath
+"@
+        }
+    }
+
+    $isolatedHelperDependencies =
+        @(
+            $helperDependencyNames |
+            Sort-Object
+        )
 }
 finally {
     $archive.Dispose()
@@ -453,4 +619,10 @@ finally {
     SharedAssemblyChecksPassed = $true
     SharedAssemblyCheckCount = $sharedAssemblyChecks.Count
     SharedAssemblyChecks = $sharedAssemblyChecks
+    PersistenceHelperIsolationPassed = $true
+    PersistenceHelperRoot = $persistenceHelperRoot
+    PersistenceHelperDependencyCount = $isolatedHelperDependencies.Count
+    PersistenceHelperDependencies = $isolatedHelperDependencies
+    PersistenceHelperRiskyDependenciesPresent = $true
+    PersistenceHelperEscapedDependencyCount = 0
 }
