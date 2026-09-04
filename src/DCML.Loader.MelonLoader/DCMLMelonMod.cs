@@ -69,11 +69,6 @@ try
 
         public override void OnUpdate()
         {
-                        if (_statusOverlay != null)
-            {
-                _statusOverlay.UpdateToggle();
-            }
-
 if (_gameThread == null)
             {
                 return;

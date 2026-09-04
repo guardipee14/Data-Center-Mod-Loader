@@ -19,8 +19,6 @@ namespace DCML.Loader.MelonLoader
         private readonly Action<string> _warning;
 
         private bool _visible;
-        private bool _inputDisabled;
-        private bool _inputWarningLogged;
         private bool _guiDisabled;
         private bool _guiWarningLogged;
         private bool _renderReadyLogged;
@@ -49,60 +47,27 @@ namespace DCML.Loader.MelonLoader
         public bool Visible =>
             _visible;
 
-        public void UpdateToggle()
+        public void Draw(
+            DCMLDiagnosticsSnapshot snapshot
+        )
         {
-            if (_inputDisabled)
+            if (_guiDisabled)
             {
                 return;
             }
 
             try
             {
+                HandleToggleEvent();
+
                 if (
-                    !Input.GetKeyDown(
-                        KeyCode.F8
-                    )
+                    !_visible ||
+                    snapshot == null
                 )
                 {
                     return;
                 }
 
-                _visible =
-                    !_visible;
-
-                _info(
-                    "Status UI " +
-                    (
-                        _visible
-                            ? "shown"
-                            : "hidden"
-                    ) +
-                    "."
-                );
-            }
-            catch (Exception exception)
-            {
-                DisableInput(
-                    exception
-                );
-            }
-        }
-
-        public void Draw(
-            DCMLDiagnosticsSnapshot snapshot
-        )
-        {
-            if (
-                !_visible ||
-                snapshot == null ||
-                _guiDisabled
-            )
-            {
-                return;
-            }
-
-            try
-            {
                 IReadOnlyList<string> lines =
                     DCMLStatusPanelText.Build(
                         snapshot,
@@ -169,26 +134,33 @@ namespace DCML.Loader.MelonLoader
             }
         }
 
-        private void DisableInput(
-            Exception exception
-        )
+        private void HandleToggleEvent()
         {
-            _inputDisabled =
-                true;
+            Event currentEvent =
+                Event.current;
 
-            if (_inputWarningLogged)
+            if (
+                currentEvent == null ||
+                currentEvent.type !=
+                    EventType.KeyDown ||
+                currentEvent.keyCode !=
+                    KeyCode.F8
+            )
             {
                 return;
             }
 
-            _inputWarningLogged =
-                true;
+            _visible =
+                !_visible;
 
-            _warning(
-                "Status UI input failed and has been disabled." +
-                FormatExceptionSuffix(
-                    exception
-                )
+            _info(
+                "Status UI " +
+                (
+                    _visible
+                        ? "shown"
+                        : "hidden"
+                ) +
+                "."
             );
         }
 
