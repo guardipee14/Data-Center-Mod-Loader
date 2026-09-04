@@ -4,7 +4,7 @@ DCML is an experimental, host-neutral mod runtime for **Data Center** by Waseku.
 
 The current implementation runs through a MelonLoader host adapter, while DCML's runtime contracts remain separate from MelonLoader. The goal is to let the loader handle discovery, validation, dependency ordering, activation, lifecycle, and host bridging without forcing every mod author into a special high-level development framework.
 
-> **Project status:** early development / **v0.0.3 Evidence-Backed Physical Topology**.
+> **Project status:** early development / **v0.0.4 development — Data Center integration complete**.
 
 [Latest prerelease: DCML v0.0.3](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.3)
 
@@ -55,7 +55,7 @@ The current runtime has been tested inside the live Data Center game process and
 - merge persisted cable segments into bidirectional physical `NetworkConnection` edges;
 - keep save decoding outside the MelonLoader .NET 6 process through the optional .NET 8 persistence helper.
 
-The current automated test baseline is **306 passing tests**.
+The current development baseline is **390 passing tests**.
 
 ## Runtime capabilities
 
@@ -293,9 +293,9 @@ End-to-end probe module used to prove the runtime and read-only game-facing APIs
 
 ## Installing the current prerelease
 
-Download `DCML-v0.0.2.zip` from the [v0.0.2 release](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.2).
+Download `DCML-v0.0.3.zip` from the [v0.0.3 release](https://github.com/guardipee14/Data-Center-Mod-Loader/releases/tag/v0.0.3).
 
-The archive contains:
+The archive contains the current MelonLoader host, shared DCML libraries, validation module, and optional persistence helper used by the v0.0.3 physical-topology release.
 
 ```text
 Mods/
@@ -309,21 +309,30 @@ UserData/
   DCML/
     Modules/
       DCML.TestModule/
+        DCML.DataCenter.dll
         DCML.TestModule.dll
         manifest.json
+        PersistenceHelper/
+          DCML.Persistence.Helper.dll
+          DCML.Persistence.Helper.deps.json
+          DCML.Persistence.Helper.runtimeconfig.json
+          System.Formats.Nrbf.dll
+          System.Reflection.Metadata.dll
+          System.Collections.Immutable.dll
+          ...
 ```
 
 Extract the archive into the Data Center game directory with MelonLoader already installed.
 
 `DCML.TestModule` is a validation module and can be removed after verifying the runtime.
 
-Published v0.0.2 ZIP SHA-256:
+Published v0.0.3 ZIP SHA-256:
 
 ```text
-b511d2a5951c5d089152cd47ab56737d6029cdad2b8eb14ce4c414535bde0dc8
+1a5e8353c0ddefe99c0126741f77df2347a4847bf346b6e84181948ba7d15e2f
 ```
 
-A matching `DCML-v0.0.2.sha256` file is attached to the GitHub release.
+A matching `DCML-v0.0.3.sha256` file is attached to the GitHub release.
 
 ## Building
 
@@ -348,8 +357,9 @@ dotnet test .\DCML.sln `
 Current baseline:
 
 ```text
-168 passed
+390 passed
 0 failed
+0 skipped
 ```
 
 ## Current limitations
