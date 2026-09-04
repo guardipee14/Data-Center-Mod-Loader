@@ -9,10 +9,10 @@ namespace DCML.Core.Tests;
 public sealed class DCMLReleaseVersionTests
 {
     [Fact]
-    public void V003ReleaseVersion_IsConsistent()
+    public void V004ReleaseVersion_IsConsistent()
     {
         const string expected =
-            "0.0.3";
+            "0.0.4";
 
         Assert.Equal(
             expected,
@@ -42,6 +42,13 @@ public sealed class DCMLReleaseVersionTests
                 "DCML.TestModule",
                 "TestModule.cs");
 
+        string loaderAssemblyInfoPath =
+            Path.Combine(
+                root,
+                "src",
+                "DCML.Loader.MelonLoader",
+                "AssemblyInfo.cs");
+
         var result =
             DCMLManifestJson.Deserialize(
                 File.ReadAllText(
@@ -68,6 +75,15 @@ public sealed class DCMLReleaseVersionTests
         Assert.Contains(
             "DCML.Core.DCMLVersion.Current",
             testModuleSource,
+            StringComparison.Ordinal);
+
+        string loaderAssemblyInfoSource =
+            File.ReadAllText(
+                loaderAssemblyInfoPath);
+
+        Assert.Contains(
+            "DCML.Core.DCMLVersion.Current",
+            loaderAssemblyInfoSource,
             StringComparison.Ordinal);
     }
 }
