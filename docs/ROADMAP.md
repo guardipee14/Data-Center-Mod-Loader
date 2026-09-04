@@ -105,7 +105,7 @@ compatibility.
 - [x] Keep explicit save selection; do not silently choose the newest save
 - [x] Add production-facing persistence-source configuration without embedding user-specific paths in release packages
 - [x] Add reusable topology capture examples for mod authors
-- [ ] Expand physical-path reasoning only from evidence-backed persisted/live relationships
+- [x] Expand physical-path reasoning only from evidence-backed persisted/live relationships
 - [ ] Preserve read-only defaults and scene-initialization safety
 
 ### Validation and release engineering
