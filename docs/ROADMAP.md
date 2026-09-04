@@ -97,7 +97,7 @@ compatibility.
 - [x] Identify which existing convenience services belong in a future `DCML.SDK` surface
 - [x] Preserve backwards-compatible access while the split is introduced
 - [x] Add concise examples for logging, configuration, events, scene lifecycle, main-thread work, and discovery
-- [ ] Publish API reference documentation for the stable/provisional capability surface
+- [x] Publish API reference documentation for the stable/provisional capability surface
 
 ### Data Center integration
 
