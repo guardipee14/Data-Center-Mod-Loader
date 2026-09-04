@@ -124,7 +124,7 @@ compatibility.
 - [x] Surface discovery/validation/dependency/activation failures in a developer-friendly form
 - [x] Runtime module inventory and lifecycle state reporting
 - [x] Optional in-game status UI
-- [ ] Exportable diagnostic report that avoids sensitive/user-specific data
+- [x] Exportable diagnostic report that avoids sensitive/user-specific data
 
 ### v0.0.6 — Package Sources & Workshop Staging
 
