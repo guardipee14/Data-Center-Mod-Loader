@@ -122,7 +122,7 @@ compatibility.
 
 - [x] Module diagnostics/status model
 - [x] Surface discovery/validation/dependency/activation failures in a developer-friendly form
-- [ ] Runtime module inventory and lifecycle state reporting
+- [x] Runtime module inventory and lifecycle state reporting
 - [ ] Optional in-game status UI
 - [ ] Exportable diagnostic report that avoids sensitive/user-specific data
 

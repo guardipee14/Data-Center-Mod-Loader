@@ -22,6 +22,8 @@ namespace DCML.Core.Runtime
 
         private readonly List<RuntimeModule> _startOrder =
             new List<RuntimeModule>();
+        private readonly List<DCMLModuleRuntimeIssue> _issueHistory =
+            new List<DCMLModuleRuntimeIssue>();
 
         public DCMLModuleRuntime(
             IDCMLModuleActivator activator,
@@ -50,6 +52,19 @@ namespace DCML.Core.Runtime
                     module.State ==
                     DCMLModuleRuntimeState.Running
             );
+        /// <summary>
+        /// Gets a point-in-time snapshot of the current runtime module
+        /// inventory, lifecycle states, and accumulated runtime issues.
+        /// </summary>
+        public DCMLModuleRuntimeResult GetSnapshot()
+        {
+            return CreateResult(
+                new List<DCMLModuleRuntimeIssue>(
+                    _issueHistory
+                ),
+                false
+            );
+        }
 
         /// <summary>
         /// Activates, initializes, and starts modules in the supplied
@@ -519,9 +534,19 @@ namespace DCML.Core.Runtime
         }
 
         private DCMLModuleRuntimeResult CreateResult(
-            IReadOnlyList<DCMLModuleRuntimeIssue> issues
+            IReadOnlyList<DCMLModuleRuntimeIssue> issues,
+            bool recordIssues = true
         )
         {
+            if (
+                recordIssues &&
+                issues.Count != 0
+            )
+            {
+                _issueHistory.AddRange(
+                    issues
+                );
+            }
             var entries =
                 _modules.Values
                     .OrderBy(
