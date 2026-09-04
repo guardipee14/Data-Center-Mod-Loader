@@ -151,7 +151,6 @@ compatibility.
 - [ ] Investigate sanctioned cloud/Boosteroid bootstrap options
 - [ ] Explore a cloud-safe persistence decoder only if the execution environment permits it
 - [ ] Additional Data Center domain helpers as runtime evidence supports them
-- [ ] Factory, hacking, coding, and other game-system APIs only when evidence and use cases justify them
 
 ## Safety and compatibility principles
 
