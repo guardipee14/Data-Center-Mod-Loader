@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using DCML.Core.Models;
 using DCML.Core.Runtime;
+using UnityEngine;
 
 namespace DCML.Loader.MelonLoader
 {
     /// <summary>
     /// Optional, read-only Unity IMGUI status overlay for the
-    /// MelonLoader host. Unity types are resolved dynamically so
-    /// failure to initialize the overlay cannot prevent DCML startup.
+    /// MelonLoader host.
     /// </summary>
     internal sealed class MelonStatusOverlay
     {
@@ -21,17 +19,11 @@ namespace DCML.Loader.MelonLoader
         private readonly Action<string> _warning;
 
         private bool _visible;
+        private bool _inputDisabled;
+        private bool _inputWarningLogged;
         private bool _guiDisabled;
         private bool _guiWarningLogged;
-
-        private Type _rectType;
-        private ConstructorInfo _rectConstructor;
-        private MethodInfo _guiBox;
-        private MethodInfo _guiLabel;
-
-        private Type _keyCodeType;
-        private MethodInfo _inputGetKeyDown;
-        private object _toggleKey;
+        private bool _renderReadyLogged;
 
         public MelonStatusOverlay(
             Action<string> info,
@@ -59,25 +51,18 @@ namespace DCML.Loader.MelonLoader
 
         public void UpdateToggle()
         {
-            if (
-                !TryInitializeInput()
-            )
+            if (_inputDisabled)
             {
                 return;
             }
 
             try
             {
-                bool pressed =
-                    (bool) _inputGetKeyDown.Invoke(
-                        null,
-                        new[]
-                        {
-                            _toggleKey
-                        }
-                    );
-
-                if (!pressed)
+                if (
+                    !Input.GetKeyDown(
+                        KeyCode.F8
+                    )
+                )
                 {
                     return;
                 }
@@ -95,16 +80,11 @@ namespace DCML.Loader.MelonLoader
                     "."
                 );
             }
-            catch
+            catch (Exception exception)
             {
-                _inputGetKeyDown =
-                    null;
-
-                _keyCodeType =
-                    null;
-
-                _toggleKey =
-                    null;
+                DisableInput(
+                    exception
+                );
             }
         }
 
@@ -116,13 +96,6 @@ namespace DCML.Loader.MelonLoader
                 !_visible ||
                 snapshot == null ||
                 _guiDisabled
-            )
-            {
-                return;
-            }
-
-            if (
-                !TryInitializeGui()
             )
             {
                 return;
@@ -146,21 +119,14 @@ namespace DCML.Loader.MelonLoader
                         22.0f
                     );
 
-                object panelRect =
-                    CreateRect(
+                GUI.Box(
+                    new Rect(
                         20.0f,
                         20.0f,
                         760.0f,
                         panelHeight
-                    );
-
-                _guiBox.Invoke(
-                    null,
-                    new[]
-                    {
-                        panelRect,
-                        "DCML Module Status - F8 to hide"
-                    }
+                    ),
+                    "DCML Module Status - F8 to hide"
                 );
 
                 float y =
@@ -171,25 +137,28 @@ namespace DCML.Loader.MelonLoader
                     in lines
                 )
                 {
-                    object lineRect =
-                        CreateRect(
+                    GUI.Label(
+                        new Rect(
                             34.0f,
                             y,
                             732.0f,
                             22.0f
-                        );
-
-                    _guiLabel.Invoke(
-                        null,
-                        new[]
-                        {
-                            lineRect,
-                            line
-                        }
+                        ),
+                        line
                     );
 
                     y +=
                         22.0f;
+                }
+
+                if (!_renderReadyLogged)
+                {
+                    _renderReadyLogged =
+                        true;
+
+                    _info(
+                        "Status UI render ready."
+                    );
                 }
             }
             catch (Exception exception)
@@ -200,181 +169,26 @@ namespace DCML.Loader.MelonLoader
             }
         }
 
-        private bool TryInitializeGui()
-        {
-            if (_guiDisabled)
-            {
-                return false;
-            }
-
-            if (
-                _rectConstructor != null &&
-                _guiBox != null &&
-                _guiLabel != null
-            )
-            {
-                return true;
-            }
-
-            _rectType =
-                FindLoadedType(
-                    "UnityEngine.Rect"
-                );
-
-            Type guiType =
-                FindLoadedType(
-                    "UnityEngine.GUI"
-                );
-
-            if (
-                _rectType == null ||
-                guiType == null
-            )
-            {
-                return false;
-            }
-
-            _rectConstructor =
-                _rectType.GetConstructor(
-                    new[]
-                    {
-                        typeof(float),
-                        typeof(float),
-                        typeof(float),
-                        typeof(float)
-                    }
-                );
-
-            _guiBox =
-                guiType.GetMethod(
-                    "Box",
-                    BindingFlags.Public |
-                    BindingFlags.Static,
-                    null,
-                    new[]
-                    {
-                        _rectType,
-                        typeof(string)
-                    },
-                    null
-                );
-
-            _guiLabel =
-                guiType.GetMethod(
-                    "Label",
-                    BindingFlags.Public |
-                    BindingFlags.Static,
-                    null,
-                    new[]
-                    {
-                        _rectType,
-                        typeof(string)
-                    },
-                    null
-                );
-
-            if (
-                _rectConstructor == null ||
-                _guiBox == null ||
-                _guiLabel == null
-            )
-            {
-                DisableGui(
-                    null
-                );
-
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool TryInitializeInput()
-        {
-            if (
-                _inputGetKeyDown != null &&
-                _toggleKey != null
-            )
-            {
-                return true;
-            }
-
-            Type inputType =
-                FindLoadedType(
-                    "UnityEngine.Input"
-                );
-
-            _keyCodeType =
-                FindLoadedType(
-                    "UnityEngine.KeyCode"
-                );
-
-            if (
-                inputType == null ||
-                _keyCodeType == null
-            )
-            {
-                return false;
-            }
-
-            _inputGetKeyDown =
-                inputType.GetMethod(
-                    "GetKeyDown",
-                    BindingFlags.Public |
-                    BindingFlags.Static,
-                    null,
-                    new[]
-                    {
-                        _keyCodeType
-                    },
-                    null
-                );
-
-            if (_inputGetKeyDown == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                _toggleKey =
-                    Enum.Parse(
-                        _keyCodeType,
-                        "F8"
-                    );
-            }
-            catch
-            {
-                _inputGetKeyDown =
-                    null;
-
-                _keyCodeType =
-                    null;
-
-                _toggleKey =
-                    null;
-
-                return false;
-            }
-
-            return true;
-        }
-
-        private object CreateRect(
-            float x,
-            float y,
-            float width,
-            float height
+        private void DisableInput(
+            Exception exception
         )
         {
-            return _rectConstructor.Invoke(
-                new object[]
-                {
-                    x,
-                    y,
-                    width,
-                    height
-                }
+            _inputDisabled =
+                true;
+
+            if (_inputWarningLogged)
+            {
+                return;
+            }
+
+            _inputWarningLogged =
+                true;
+
+            _warning(
+                "Status UI input failed and has been disabled." +
+                FormatExceptionSuffix(
+                    exception
+                )
             );
         }
 
@@ -393,52 +207,28 @@ namespace DCML.Loader.MelonLoader
             _guiWarningLogged =
                 true;
 
-            string suffix =
-                exception == null
-                    ? string.Empty
-                    : " " +
-                      exception.GetType().Name +
-                      ": " +
-                      exception.Message;
-
             _warning(
-                "Status UI could not initialize and has been disabled." +
-                suffix
+                "Status UI rendering failed and has been disabled." +
+                FormatExceptionSuffix(
+                    exception
+                )
             );
         }
 
-        private static Type FindLoadedType(
-            string fullName
+        private static string FormatExceptionSuffix(
+            Exception exception
         )
         {
-            foreach (
-                Assembly assembly
-                in AppDomain.CurrentDomain
-                    .GetAssemblies()
-            )
+            if (exception == null)
             {
-                Type type;
-
-                try
-                {
-                    type =
-                        assembly.GetType(
-                            fullName,
-                            false
-                        );
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (type != null)
-                {
-                    return type;
-                }
+                return string.Empty;
             }
 
-            return null;
+            return
+                " " +
+                exception.GetType().Name +
+                ": " +
+                exception.Message;
         }
 
         private static bool ReadInitialVisibility()
