@@ -313,7 +313,7 @@ public sealed class DCMLRuntimeSnapshotTests
 
         public string Id { get; }
 
-        
+
         public string Name =>
             Id;
 
