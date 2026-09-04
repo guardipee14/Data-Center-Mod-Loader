@@ -236,6 +236,12 @@ Assert-File -Path $loaderProject -Description 'MelonLoader host project'
 Assert-File -Path $testModuleProject -Description 'TestModule project'
 Assert-File -Path $helperProject -Description 'Persistence helper project'
 Assert-File -Path $sourceManifest -Description 'TestModule manifest'
+$validatorScript =
+    Join-Path `
+        $ProjectRoot `
+        'tools\Test-DCMLReleaseArtifact.ps1'
+
+Assert-File -Path $validatorScript -Description 'Release artifact validator'
 
 if (-not $SkipBuild) {
     Assert-Directory `
@@ -535,6 +541,18 @@ $releaseInfoJson =
     $releaseInfoJson + [Environment]::NewLine,
     [System.Text.UTF8Encoding]::new($false))
 
+Write-Host "`n===== VALIDATE RELEASE ARTIFACT =====" -ForegroundColor Cyan
+
+$artifactValidation =
+    & $validatorScript `
+        -ReleaseDirectory $releaseDirectory `
+        -ProjectRoot $ProjectRoot `
+        -ExpectedSourceCommit $sourceCommit
+
+if ($null -eq $artifactValidation -or -not $artifactValidation.Success) {
+    throw 'Release artifact validation did not report success.'
+}
+
 Write-Host "`n===== RELEASE PACKAGE COMPLETE =====" -ForegroundColor Green
 
 [pscustomobject]@{
@@ -551,4 +569,7 @@ Write-Host "`n===== RELEASE PACKAGE COMPLETE =====" -ForegroundColor Green
     PackageSha256 = $zipHash
     PackagedFileCount = $packagedFiles.Count
     StagedManifestVersion = $manifest.version
+    ArtifactValidated = [bool]$artifactValidation.Success
+    ValidatedSourceCommit = $artifactValidation.SourceCommit
+    ValidatedPackageSha256 = $artifactValidation.ActualSha256
 }

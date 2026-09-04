@@ -111,7 +111,7 @@ compatibility.
 ### Validation and release engineering
 
 - [x] Add release packaging to CI or a reproducible repository-owned release script
-- [ ] Validate release artifacts against their source commit and SHA-256 automatically
+- [x] Validate release artifacts against their source commit and SHA-256 automatically
 - [ ] Keep shared-assembly hash checks in the release gate
 - [ ] Keep persistence helper dependency-isolation checks in the release gate
 - [ ] Add a release checklist that requires live proof only when runtime-facing behavior changes

@@ -76,6 +76,37 @@ Artifacts/Releases/v<version>/
 
 The next release-validation milestone can use this metadata to verify an artifact against its source commit rather than inventing a second metadata format.
 
+## Automatic artifact validation
+
+Every package produced by `Build-DCMLRelease.ps1` is validated before the release builder reports success.
+
+The release builder invokes:
+
+```text
+tools/Test-DCMLReleaseArtifact.ps1
+```
+
+The validator fails closed unless all of the following agree:
+
+- the expected Git source commit and `release-info.json` `sourceCommit`;
+- the version-derived package filename and `release-info.json` `packageFile`;
+- the actual ZIP SHA-256;
+- `release-info.json` `packageSha256`;
+- the hash recorded in `DCML-v<version>.sha256`;
+- the package filename recorded in the `.sha256` file.
+
+A normal release build passes the source commit captured at the start of packaging directly into the validator. This prevents a package from reporting success when its metadata points at a different commit.
+
+Standalone validation can also be run explicitly:
+
+```powershell
+.\tools\Test-DCMLReleaseArtifact.ps1 -ReleaseDirectory '.\Artifacts\Releases\v0.0.4' -ExpectedSourceCommit '<full Git commit SHA>'
+```
+
+If `-ExpectedSourceCommit` is omitted, the validator uses the current repository `HEAD`. For historical artifacts, pass the expected source commit explicitly.
+
+This milestone validates source identity and package integrity only. Shared-assembly equality and persistence-helper dependency isolation remain separate release-gate milestones.
+
 ## Package layout
 
 The ZIP root is the Data Center game root layout:

@@ -55,7 +55,7 @@ The current runtime has been tested inside the live Data Center game process and
 - merge persisted cable segments into bidirectional physical `NetworkConnection` edges;
 - keep save decoding outside the MelonLoader .NET 6 process through the optional .NET 8 persistence helper.
 
-The current development baseline is **390 passing tests**.
+The current development baseline is **396 passing tests**.
 
 ## Runtime capabilities
 
@@ -357,7 +357,7 @@ dotnet test .\DCML.sln `
 Current baseline:
 
 ```text
-390 passed
+396 passed
 0 failed
 0 skipped
 ```
