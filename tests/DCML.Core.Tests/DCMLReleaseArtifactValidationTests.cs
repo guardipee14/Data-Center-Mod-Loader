@@ -139,6 +139,113 @@ public sealed class DCMLReleaseArtifactValidationTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Validator_DeclaresTheDataCenterSharedAssemblyPair()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "UserLibs/DCML.DataCenter.dll",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "UserData/DCML/Modules/DCML.TestModule/DCML.DataCenter.dll",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_HashesSharedAssembliesFromTheReleaseZip()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "Get-ZipEntrySha256",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "System.IO.Compression.ZipFile",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "foreach ($candidate in $Archive.Entries)",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "Release ZIP entry lookup returned no entry after an exact path match:",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "return $foundEntry",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            "return\n        $foundEntry",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "SHA256",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_FailsClosedWhenSharedAssemblyHashesDiffer()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "Shared assembly hash mismatch.",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "$primarySha256",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "$secondarySha256",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validator_ReportsSharedAssemblyGateResults()
+    {
+        string source =
+            ReadTool(
+                "Test-DCMLReleaseArtifact.ps1");
+
+        Assert.Contains(
+            "SharedAssemblyChecksPassed = $true",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "SharedAssemblyCheckCount = $sharedAssemblyChecks.Count",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "SharedAssemblyChecks = $sharedAssemblyChecks",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string ReadTool(
         string fileName)
     {

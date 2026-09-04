@@ -56,6 +56,97 @@ function Assert-Directory {
     }
 }
 
+function Get-ZipEntrySha256 {
+    param(
+        [Parameter(Mandatory)]
+        $Entry
+    )
+
+    $stream =
+        $Entry.Open()
+
+    $sha256 =
+        [System.Security.Cryptography.SHA256]::Create()
+
+    try {
+        $hashBytes =
+            $sha256.ComputeHash(
+                $stream)
+
+        return (
+            [System.BitConverter]::ToString(
+                $hashBytes)
+        ).Replace(
+            '-',
+            ''
+        ).ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Get-SingleZipEntry {
+    param(
+        [Parameter(Mandatory)]
+        $Archive,
+
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $normalizedExpectedPath =
+        $Path.Replace(
+            '\',
+            '/')
+
+    $foundEntry =
+        $null
+
+    $foundCount =
+        0
+
+    foreach ($candidate in $Archive.Entries) {
+        if ([string]::IsNullOrWhiteSpace($candidate.Name)) {
+            continue
+        }
+
+        $normalizedCandidatePath =
+            $candidate.FullName.Replace(
+                '\',
+                '/')
+
+        if (
+            [string]::Equals(
+                $normalizedCandidatePath,
+                $normalizedExpectedPath,
+                [System.StringComparison]::Ordinal)
+        ) {
+            $foundCount++
+
+            if ($null -eq $foundEntry) {
+                $foundEntry =
+                    $candidate
+            }
+        }
+    }
+
+    if ($foundCount -eq 0) {
+        throw "Required release ZIP entry was not found: $Path"
+    }
+
+    if ($foundCount -ne 1) {
+        throw "Release ZIP contains duplicate entries for required path: $Path"
+    }
+
+    if ($null -eq $foundEntry) {
+        throw "Release ZIP entry lookup returned no entry after an exact path match: $Path"
+    }
+
+    return $foundEntry
+}
+
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot =
         [System.IO.Path]::GetFullPath(
@@ -274,6 +365,76 @@ Checksum: $checksumSha256
 "@
 }
 
+$sharedAssemblyPairs =
+    @(
+        [pscustomobject]@{
+            Name = 'DCML.DataCenter.dll'
+            PrimaryPath = 'UserLibs/DCML.DataCenter.dll'
+            SecondaryPath = 'UserData/DCML/Modules/DCML.TestModule/DCML.DataCenter.dll'
+        }
+    )
+
+Add-Type `
+    -AssemblyName System.IO.Compression.FileSystem `
+    -ErrorAction Stop
+
+$archive =
+    [System.IO.Compression.ZipFile]::OpenRead(
+        $packagePath)
+
+$sharedAssemblyChecks =
+    @()
+
+try {
+    foreach ($pair in $sharedAssemblyPairs) {
+        $primaryEntry =
+            Get-SingleZipEntry `
+                -Archive $archive `
+                -Path $pair.PrimaryPath
+
+        $secondaryEntry =
+            Get-SingleZipEntry `
+                -Archive $archive `
+                -Path $pair.SecondaryPath
+
+        $primarySha256 =
+            Get-ZipEntrySha256 `
+                -Entry $primaryEntry
+
+        $secondarySha256 =
+            Get-ZipEntrySha256 `
+                -Entry $secondaryEntry
+
+        if (
+            -not [string]::Equals(
+                $primarySha256,
+                $secondarySha256,
+                [System.StringComparison]::Ordinal)
+        ) {
+            throw @"
+Shared assembly hash mismatch.
+Assembly:  $($pair.Name)
+Primary:   $($pair.PrimaryPath)
+Primary SHA-256:   $primarySha256
+Secondary: $($pair.SecondaryPath)
+Secondary SHA-256: $secondarySha256
+"@
+        }
+
+        $sharedAssemblyChecks +=
+            [pscustomobject]@{
+                Name = $pair.Name
+                PrimaryPath = $pair.PrimaryPath
+                SecondaryPath = $pair.SecondaryPath
+                Sha256 = $primarySha256
+                Matches = $true
+            }
+    }
+}
+finally {
+    $archive.Dispose()
+}
+
 [pscustomobject]@{
     Success = $true
     Version = $version
@@ -289,4 +450,7 @@ Checksum: $checksumSha256
     HashMatches = $true
     ChecksumFileMatches = $true
     PackageNameMatches = $true
+    SharedAssemblyChecksPassed = $true
+    SharedAssemblyCheckCount = $sharedAssemblyChecks.Count
+    SharedAssemblyChecks = $sharedAssemblyChecks
 }

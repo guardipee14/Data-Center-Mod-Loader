@@ -105,8 +105,27 @@ Standalone validation can also be run explicitly:
 
 If `-ExpectedSourceCommit` is omitted, the validator uses the current repository `HEAD`. For historical artifacts, pass the expected source commit explicitly.
 
-This milestone validates source identity and package integrity only. Shared-assembly equality and persistence-helper dependency isolation remain separate release-gate milestones.
+The release gate now validates source identity, outer package integrity, and declared shared-assembly equality. Persistence-helper dependency isolation remains a separate release-gate milestone.
 
+## Shared-assembly hash gate
+
+The artifact validator also verifies byte identity for assemblies intentionally duplicated across release package locations.
+
+Current declared pair:
+
+```text
+UserLibs/DCML.DataCenter.dll
+    ==
+UserData/DCML/Modules/DCML.TestModule/DCML.DataCenter.dll
+```
+
+Both files must exist exactly once in the final ZIP and their SHA-256 hashes must match.
+
+The comparison is performed against ZIP entries from the final release artifact, not the staging directory. This prevents a package from passing because staging was correct while the actual published archive drifted.
+
+The shared pairs are declared explicitly in `tools/Test-DCMLReleaseArtifact.ps1`. Future intentional shared copies should be added to that declaration rather than inferred from filenames or directory proximity.
+
+A shared-assembly mismatch fails the same artifact-validation gate that already checks the source commit and outer package SHA-256.
 ## Package layout
 
 The ZIP root is the Data Center game root layout:
@@ -161,13 +180,15 @@ working tree dirty -> release packaging stops
 
 A dirty artifact should not be published as an official release.
 
-## Scope of this milestone
+## Release-gate status
 
-This milestone establishes one reproducible repository-owned packaging path.
+The repository-owned release path now includes:
 
-Separate roadmap items still cover stronger release gates, including:
+- automatic source-commit validation;
+- outer ZIP SHA-256 and checksum-file validation;
+- explicit shared-assembly hash equality checks.
 
-- automatically validating artifacts against their source commit and SHA-256;
-- explicit shared-assembly hash checks;
+Separate roadmap items still cover:
+
 - persistence-helper dependency-isolation checks;
 - the release checklist and live-proof policy.
