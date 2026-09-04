@@ -120,7 +120,7 @@ compatibility.
 
 ### v0.0.5 — Diagnostics & Module Status
 
-- [ ] Module diagnostics/status model
+- [x] Module diagnostics/status model
 - [ ] Surface discovery/validation/dependency/activation failures in a developer-friendly form
 - [ ] Runtime module inventory and lifecycle state reporting
 - [ ] Optional in-game status UI
