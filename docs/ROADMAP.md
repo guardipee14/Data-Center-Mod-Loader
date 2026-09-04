@@ -114,7 +114,7 @@ compatibility.
 - [x] Validate release artifacts against their source commit and SHA-256 automatically
 - [x] Keep shared-assembly hash checks in the release gate
 - [x] Keep persistence helper dependency-isolation checks in the release gate
-- [ ] Add a release checklist that requires live proof only when runtime-facing behavior changes
+- [x] Add a release checklist that requires live proof only when runtime-facing behavior changes
 
 ## Follow-on milestones
 

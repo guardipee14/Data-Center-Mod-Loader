@@ -183,6 +183,23 @@ The script then stages known required outputs and fails if required release file
 
 `-SkipBuild` exists for advanced validation from already-built outputs. Normal release production should not use it.
 
+## Release readiness and conditional live proof
+
+After building and validating a release artifact, run the repository-owned readiness gate:
+
+```text
+tools/Test-DCMLReleaseReadiness.ps1
+```
+
+The readiness gate compares the previous release/base commit with the exact release commit and classifies changed paths.
+
+Automated artifact validation is always required. Live Data Center proof is required only when the changed range contains runtime-facing paths.
+
+Current explicit runtime-facing paths are `src/**` and `tools/Build-DCMLRelease.ps1`. Documentation, tests, examples, workflow files, and the release-validation/readiness tools are non-runtime. Unknown/unclassified paths fail safe as runtime-facing.
+
+When live proof is required, `live-proof.json` must match both the exact release commit and the validated release ZIP SHA-256. This prevents stale proof from another source state or artifact from satisfying the gate.
+
+See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the full release procedure and proof schema.
 ## Dirty working trees
 
 The default is fail-closed:
@@ -202,6 +219,7 @@ The repository-owned release path now includes:
 - automatic source-commit validation;
 - outer ZIP SHA-256 and checksum-file validation;
 - explicit shared-assembly hash equality checks;
-- persistence-helper dependency-isolation checks.
+- persistence-helper dependency-isolation checks;
+- release-readiness classification with conditional live Data Center proof.
 
-The remaining release-engineering roadmap item covers the release checklist and live-proof policy.
+All v0.0.4 validation and release engineering roadmap items are complete.
