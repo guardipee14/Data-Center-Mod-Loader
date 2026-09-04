@@ -13,6 +13,13 @@ namespace DCML.Loader.MelonLoader
     public sealed class DCMLMelonMod : MelonMod
     {
         private DCMLModuleRuntime _runtime;
+        private DCMLPackageDiscoveryResult _discovery;
+
+        private DCMLPackageCompatibilityResult _compatibility;
+
+        private DCMLDependencyResolutionResult _resolution;
+
+        private MelonStatusOverlay _statusOverlay;
 
         private DCMLEventBus _eventBus;
 
@@ -32,7 +39,21 @@ namespace DCML.Loader.MelonLoader
 
         public override void OnInitializeMelon()
         {
-            try
+                        _statusOverlay =
+                new MelonStatusOverlay(
+                    message =>
+                        LoggerInstance.Msg(
+                            "[DCML] " +
+                            message
+                        ),
+                    message =>
+                        LoggerInstance.Warning(
+                            "[DCML] " +
+                            message
+                        )
+                );
+
+try
             {
                 StartDCML();
             }
@@ -48,7 +69,12 @@ namespace DCML.Loader.MelonLoader
 
         public override void OnUpdate()
         {
-            if (_gameThread == null)
+                        if (_statusOverlay != null)
+            {
+                _statusOverlay.UpdateToggle();
+            }
+
+if (_gameThread == null)
             {
                 return;
             }
@@ -67,6 +93,27 @@ namespace DCML.Loader.MelonLoader
             }
         }
 
+        public override void OnGUI()
+        {
+            if (_statusOverlay == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _statusOverlay.Draw(
+                    CreateDiagnosticsSnapshot()
+                );
+            }
+            catch (Exception exception)
+            {
+                LoggerInstance.Warning(
+                    "[DCML] Status UI frame failed: " +
+                    exception.Message
+                );
+            }
+        }
         public override void OnDeinitializeMelon()
         {
             if (_runtime == null)
@@ -150,6 +197,8 @@ namespace DCML.Loader.MelonLoader
                 DCMLPackageDiscovery.Discover(
                     modulesRoot);
 
+            _discovery = discovery;
+
             foreach (DCMLPackageDiscoveryFailure failure in discovery.Failures)
             {
                 LoggerInstance.Warning(
@@ -176,6 +225,8 @@ namespace DCML.Loader.MelonLoader
                     DCMLVersion.Current,
                     MelonHostCapabilities.Create());
 
+            _compatibility = compatibility;
+
             foreach (
                 DCMLPackageCompatibilityIssue issue
                 in compatibility.Issues)
@@ -192,6 +243,8 @@ namespace DCML.Loader.MelonLoader
             DCMLDependencyResolutionResult resolution =
                 DCMLDependencyResolver.Resolve(
                     compatibility.CompatiblePackages);
+
+            _resolution = resolution;
 
             foreach (DCMLDependencyResolutionIssue issue in resolution.Issues)
             {
@@ -286,6 +339,24 @@ namespace DCML.Loader.MelonLoader
                 " running module(s).");
         }
 
+        private DCMLDiagnosticsSnapshot CreateDiagnosticsSnapshot()
+        {
+            DCMLModuleRuntimeResult runtimeSnapshot =
+                _runtime == null
+                    ? null
+                    : _runtime.GetSnapshot();
+
+            return DCMLDiagnosticsBuilder.Build(
+                discovery:
+                    _discovery,
+                compatibility:
+                    _compatibility,
+                dependencyResolution:
+                    _resolution,
+                runtime:
+                    runtimeSnapshot
+            );
+        }
         private void ReportSceneLifecycle(
             DCMLSceneLifecycleStage stage,
             int buildIndex,
