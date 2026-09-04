@@ -101,8 +101,8 @@ compatibility.
 
 ### Data Center integration
 
-- [ ] Move the proven process-backed cable persistence source out of the TestModule into a reusable Data Center/host adapter
-- [ ] Keep explicit save selection; do not silently choose the newest save
+- [x] Move the proven process-backed cable persistence source out of the TestModule into a reusable Data Center/host adapter
+- [x] Keep explicit save selection; do not silently choose the newest save
 - [ ] Add production-facing persistence-source configuration without embedding user-specific paths in release packages
 - [ ] Add reusable topology capture examples for mod authors
 - [ ] Expand physical-path reasoning only from evidence-backed persisted/live relationships
