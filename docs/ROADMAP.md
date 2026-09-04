@@ -93,10 +93,10 @@ compatibility.
 
 ### Optional SDK boundary
 
-- [ ] Formalize the separation between minimal loader/runtime contracts and optional developer conveniences
-- [ ] Identify which existing convenience services belong in a future `DCML.SDK` surface
-- [ ] Preserve backwards-compatible access while the split is introduced
-- [ ] Add concise examples for logging, configuration, events, scene lifecycle, main-thread work, and discovery
+- [x] Formalize the separation between minimal loader/runtime contracts and optional developer conveniences
+- [x] Identify which existing convenience services belong in a future `DCML.SDK` surface
+- [x] Preserve backwards-compatible access while the split is introduced
+- [x] Add concise examples for logging, configuration, events, scene lifecycle, main-thread work, and discovery
 - [ ] Publish API reference documentation for the stable/provisional capability surface
 
 ### Data Center integration

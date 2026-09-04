@@ -35,6 +35,7 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\DCML.LoaderAcceptanceProbe.Minimal\DCML.LoaderAcceptanceProbe.Minimal.csproj"
                       ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\DCML.SDK\DCML.SDK.csproj" />
   </ItemGroup>
 
 </Project>
