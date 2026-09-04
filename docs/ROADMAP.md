@@ -106,7 +106,7 @@ compatibility.
 - [x] Add production-facing persistence-source configuration without embedding user-specific paths in release packages
 - [x] Add reusable topology capture examples for mod authors
 - [x] Expand physical-path reasoning only from evidence-backed persisted/live relationships
-- [ ] Preserve read-only defaults and scene-initialization safety
+- [x] Preserve read-only defaults and scene-initialization safety
 
 ### Validation and release engineering
 
