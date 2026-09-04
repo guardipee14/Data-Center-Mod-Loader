@@ -32,19 +32,38 @@ public sealed class DataCenterProcessCablePersistenceSource :
         string savePath)
     {
         _hostPath =
-            Path.GetFullPath(
-                hostPath);
+            NormalizeRequiredPath(
+                hostPath,
+                nameof(hostPath));
 
         _helperDllPath =
-            Path.GetFullPath(
-                helperDllPath);
+            NormalizeRequiredPath(
+                helperDllPath,
+                nameof(helperDllPath));
 
         SourcePath =
-            Path.GetFullPath(
-                savePath);
+            NormalizeRequiredPath(
+                savePath,
+                nameof(savePath));
     }
 
     public string SourcePath { get; }
+
+    private static string NormalizeRequiredPath(
+        string value,
+        string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException(
+                "Persistence paths must be supplied explicitly.",
+                parameterName);
+        }
+
+        return
+            Path.GetFullPath(
+                value);
+    }
 
     public async Task<DataCenterCablePersistenceSnapshot> ReadAsync()
     {

@@ -777,25 +777,23 @@ public sealed class TestModule : IDCMLModule
         CreateCablePersistenceSource(
             ProbeSettings settings)
     {
-        if (
-            !settings.EnablePhysicalCablePersistenceSource ||
-            string.IsNullOrWhiteSpace(
-                settings.PhysicalCableSavePath) ||
-            string.IsNullOrWhiteSpace(
-                settings.PhysicalCableHelperHostPath) ||
-            string.IsNullOrWhiteSpace(
-                settings.PhysicalCableHelperDllPath)
-        )
-        {
-            return null;
-        }
+        return
+            DataCenterProcessCablePersistenceSourceFactory.Create(
+                new DataCenterProcessCablePersistenceSettings
+                {
+                    Enabled =
+                        settings.EnablePhysicalCablePersistenceSource,
 
-        return new DataCenterProcessCablePersistenceSource(
-            settings.PhysicalCableHelperHostPath,
-            settings.PhysicalCableHelperDllPath,
-            settings.PhysicalCableSavePath);
+                    SavePath =
+                        settings.PhysicalCableSavePath,
+
+                    HelperHostPath =
+                        settings.PhysicalCableHelperHostPath,
+
+                    HelperDllPath =
+                        settings.PhysicalCableHelperDllPath
+                });
     }
-
     private void RunPhysicalCablePersistenceSourceProbe()
     {
         if (

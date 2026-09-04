@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using DCML.DataCenter.Abstractions;
 using DCML.DataCenter.Persistence;
 using Xunit;
@@ -83,7 +82,6 @@ public sealed class DCMLDataCenterPersistenceAdapterTests
             "Directory.EnumerateFiles",
             "Directory.GetFileSystemEntries",
             "Directory.EnumerateFileSystemEntries",
-            "LastWriteTimeUtc)",
             "OrderByDescending",
             "MaxBy("
         };
@@ -116,7 +114,7 @@ public sealed class DCMLDataCenterPersistenceAdapterTests
                     "TestModule.cs"));
 
         Assert.Contains(
-            "new DataCenterProcessCablePersistenceSource(",
+            "DataCenterProcessCablePersistenceSourceFactory.Create(",
             source,
             StringComparison.Ordinal);
 
@@ -166,6 +164,218 @@ public sealed class DCMLDataCenterPersistenceAdapterTests
         Assert.Contains(
             "<TargetFramework>net6.0</TargetFramework>",
             adapterProject,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PersistenceSettings_DefaultToDisabledAndPathFree()
+    {
+        var settings =
+            new DataCenterProcessCablePersistenceSettings();
+
+        Assert.False(
+            settings.Enabled);
+
+        Assert.False(
+            settings.HasRequiredPaths);
+
+        Assert.Equal(
+            string.Empty,
+            settings.SavePath);
+
+        Assert.Equal(
+            string.Empty,
+            settings.HelperHostPath);
+
+        Assert.Equal(
+            string.Empty,
+            settings.HelperDllPath);
+    }
+
+    [Fact]
+    public void PersistenceFactory_DisabledSettingsDoNotCreateSource()
+    {
+        var settings =
+            new DataCenterProcessCablePersistenceSettings
+            {
+                Enabled =
+                    false,
+
+                SavePath =
+                    "save.data",
+
+                HelperHostPath =
+                    "dotnet",
+
+                HelperDllPath =
+                    "DCML.Persistence.Helper.dll"
+            };
+
+        Assert.Null(
+            DataCenterProcessCablePersistenceSourceFactory.Create(
+                settings));
+    }
+
+    [Fact]
+    public void PersistenceFactory_IncompleteEnabledSettingsDoNotCreateSource()
+    {
+        var settings =
+            new DataCenterProcessCablePersistenceSettings
+            {
+                Enabled =
+                    true,
+
+                SavePath =
+                    "save.data"
+            };
+
+        Assert.False(
+            settings.HasRequiredPaths);
+
+        Assert.Null(
+            DataCenterProcessCablePersistenceSourceFactory.Create(
+                settings));
+    }
+
+    [Fact]
+    public void PersistenceFactory_CompleteEnabledSettingsCreateExplicitSource()
+    {
+        string savePath =
+            Path.Combine(
+                "production-config",
+                "selected-save.data");
+
+        var settings =
+            new DataCenterProcessCablePersistenceSettings
+            {
+                Enabled =
+                    true,
+
+                SavePath =
+                    savePath,
+
+                HelperHostPath =
+                    "dotnet",
+
+                HelperDllPath =
+                    "DCML.Persistence.Helper.dll"
+            };
+
+        IDataCenterCablePersistenceSource? source =
+            DataCenterProcessCablePersistenceSourceFactory.Create(
+                settings);
+
+        Assert.NotNull(
+            source);
+
+        Assert.Equal(
+            Path.GetFullPath(
+                savePath),
+            source!.SourcePath);
+    }
+
+    [Fact]
+    public void ProcessSource_RejectsBlankExplicitPaths()
+    {
+        Action[] invalidConstructors =
+        {
+            () =>
+                new DataCenterProcessCablePersistenceSource(
+                    string.Empty,
+                    "helper.dll",
+                    "save.data"),
+
+            () =>
+                new DataCenterProcessCablePersistenceSource(
+                    "dotnet",
+                    string.Empty,
+                    "save.data"),
+
+            () =>
+                new DataCenterProcessCablePersistenceSource(
+                    "dotnet",
+                    "helper.dll",
+                    string.Empty)
+        };
+
+        foreach (Action invalidConstructor in invalidConstructors)
+        {
+            Assert.Throws<ArgumentException>(
+                invalidConstructor);
+        }
+    }
+
+    [Fact]
+    public void PersistenceConfiguration_DocumentUsesModuleOwnedConfigAndPathFreeDefaults()
+    {
+        string root =
+            GetSolutionRoot();
+
+        string documentation =
+            File.ReadAllText(
+                Path.Combine(
+                    root,
+                    "docs",
+                    "DATACENTER-PERSISTENCE.md"));
+
+        Assert.Contains(
+            @"UserData\DCML\Data\<module-id>\config.json",
+            documentation,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "Enabled = false",
+            documentation,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "SavePath = string.Empty",
+            documentation,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "release packages must not contain machine-specific",
+            documentation,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TestModule_PreservesExistingPersistenceConfigSchemaWhileUsingFactory()
+    {
+        string root =
+            GetSolutionRoot();
+
+        string source =
+            File.ReadAllText(
+                Path.Combine(
+                    root,
+                    "src",
+                    "DCML.TestModule",
+                    "TestModule.cs"));
+
+        Assert.Contains(
+            "public bool EnablePhysicalCablePersistenceSource { get; set; }",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "public string PhysicalCableSavePath { get; set; }",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "public string PhysicalCableHelperHostPath { get; set; }",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "public string PhysicalCableHelperDllPath { get; set; }",
+            source,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "new DataCenterProcessCablePersistenceSettings",
+            source,
             StringComparison.Ordinal);
     }
 
