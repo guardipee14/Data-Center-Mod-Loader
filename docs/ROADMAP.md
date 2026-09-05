@@ -123,7 +123,7 @@ mixture of those approaches when the current host can load the mod.
 ## Next milestone — v0.0.6 Package Sources & Workshop Staging
 
 - [x] Package-source abstraction
-- [ ] Workshop package source/staging adapter
+- [x] Workshop package source/staging adapter
 - [ ] Safe package/update metadata model
 - [ ] Update/version policy
 - [ ] Dependency-aware update planning

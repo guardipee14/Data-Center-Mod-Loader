@@ -74,10 +74,14 @@ The intended flow is:
 
 Only step 1 is part of the initial package-source abstraction.
 
+## Data Center Workshop adapter
+
+The Data Center-specific Workshop source/staging adapter is documented in
+`WORKSHOP-STAGING.md`. It discovers only Workshop items already materialized
+on disk and stages them through an explicit local copy operation.
+
+It does not subscribe, download, launch Steam, or bypass provider restrictions.
+
 ## Next v0.0.6 work
 
-The next roadmap item is the Workshop package source/staging adapter.
-
-That adapter must respect the source contract and DCML's platform safety
-rules. It must not provide a mechanism for bypassing Steam, Boosteroid, or
-other provider restrictions.
+The next roadmap item is the safe package/update metadata model.
