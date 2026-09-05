@@ -124,7 +124,7 @@ mixture of those approaches when the current host can load the mod.
 
 - [x] Package-source abstraction
 - [x] Workshop package source/staging adapter
-- [ ] Safe package/update metadata model
+- [x] Safe package/update metadata model
 - [ ] Update/version policy
 - [ ] Dependency-aware update planning
 - [ ] Never bypass platform/provider restrictions

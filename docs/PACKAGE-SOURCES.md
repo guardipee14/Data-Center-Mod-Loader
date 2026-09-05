@@ -82,6 +82,13 @@ on disk and stages them through an explicit local copy operation.
 
 It does not subscribe, download, launch Steam, or bypass provider restrictions.
 
+## Package/update metadata
+
+The safe package/update metadata model is documented in
+`PACKAGE-UPDATE-METADATA.md`. Sources may opt into metadata reporting without
+gaining permission to stage, install, update, subscribe, download, or launch a
+platform provider.
+
 ## Next v0.0.6 work
 
-The next roadmap item is the safe package/update metadata model.
+The next roadmap item is update/version policy.

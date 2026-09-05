@@ -83,8 +83,13 @@ If Steam or a cloud provider does not make an item available to the current
 environment, DCML reports that the item is unavailable. It does not attempt to
 circumvent that restriction.
 
+## Package/update metadata
+
+The host-neutral metadata model is documented in `PACKAGE-UPDATE-METADATA.md`.
+The Workshop adapter does not yet advertise `UpdateMetadata`, because this
+staging slice has no authoritative version-metadata source beyond the content
+it can already observe on disk.
+
 ## Next v0.0.6 work
 
-The next roadmap item is the safe package/update metadata model. Update
-metadata will describe available state; it will not by itself authorize an
-update or a platform action.
+The next roadmap item is update/version policy.
