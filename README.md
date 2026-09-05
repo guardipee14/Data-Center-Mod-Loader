@@ -357,7 +357,7 @@ dotnet test .\DCML.sln `
 Current baseline:
 
 ```text
-468 passed
+480 passed
 0 failed
 0 skipped
 ```

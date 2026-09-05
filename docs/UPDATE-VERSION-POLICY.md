@@ -59,8 +59,13 @@ under the current version policy. It does not mean dependencies are
 satisfiable, a package has been staged or validated, or a platform action has
 been authorized.
 
+## Dependency-aware update planning
+
+Dependency-aware planning is documented in
+`DEPENDENCY-AWARE-UPDATE-PLANNING.md`. It consumes version-policy decisions
+and dependency metadata while remaining non-mutating.
+
 ## Next v0.0.6 work
 
-The next roadmap item is dependency-aware update planning. That planner will
-combine version-policy decisions with dependency metadata while remaining
-non-mutating.
+The final v0.0.6 roadmap item is explicit enforcement of platform/provider
+restrictions.

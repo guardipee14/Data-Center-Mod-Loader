@@ -85,4 +85,6 @@ decision and performs no update.
 
 ## Next v0.0.6 work
 
-The next roadmap item is dependency-aware update planning.
+Dependency-aware update planning is documented in `DEPENDENCY-AWARE-UPDATE-PLANNING.md`.
+
+The final v0.0.6 roadmap item is explicit enforcement of platform/provider restrictions.

@@ -126,7 +126,7 @@ mixture of those approaches when the current host can load the mod.
 - [x] Workshop package source/staging adapter
 - [x] Safe package/update metadata model
 - [x] Update/version policy
-- [ ] Dependency-aware update planning
+- [x] Dependency-aware update planning
 - [ ] Never bypass platform/provider restrictions
 
 ## Follow-on milestones
