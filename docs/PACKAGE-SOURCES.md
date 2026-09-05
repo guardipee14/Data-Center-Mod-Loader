@@ -89,6 +89,12 @@ The safe package/update metadata model is documented in
 gaining permission to stage, install, update, subscribe, download, or launch a
 platform provider.
 
+## Update/version policy
+
+The pure version-policy evaluator is documented in `UPDATE-VERSION-POLICY.md`.
+It classifies version/channel transitions and returns a structured recommendation
+without staging or mutating anything.
+
 ## Next v0.0.6 work
 
-The next roadmap item is update/version policy.
+The next roadmap item is dependency-aware update planning.

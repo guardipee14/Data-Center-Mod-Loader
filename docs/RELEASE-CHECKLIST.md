@@ -39,7 +39,7 @@ dotnet test .\DCML.sln `
 The expected development baseline for this milestone is:
 
 ```text
-458 passed
+468 passed
 0 failed
 0 skipped
 ```

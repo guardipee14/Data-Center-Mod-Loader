@@ -90,6 +90,11 @@ The Workshop adapter does not yet advertise `UpdateMetadata`, because this
 staging slice has no authoritative version-metadata source beyond the content
 it can already observe on disk.
 
+## Update/version policy
+
+Version-transition policy is documented in `UPDATE-VERSION-POLICY.md` and remains
+independent from Workshop staging.
+
 ## Next v0.0.6 work
 
-The next roadmap item is update/version policy.
+The next roadmap item is dependency-aware update planning.

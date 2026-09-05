@@ -77,10 +77,12 @@ A planner may later compare trusted source metadata with installed/staged
 manifest state, but must not silently treat source metadata as a validated
 manifest.
 
+## Update/version policy
+
+The pure version-policy evaluator is documented in `UPDATE-VERSION-POLICY.md`.
+Metadata remains descriptive input; policy evaluation produces only a structured
+decision and performs no update.
+
 ## Next v0.0.6 work
 
-The next roadmap item is update/version policy.
-
-That policy will decide how versions are compared and which transitions may be
-recommended. It will still produce decisions/plans rather than performing
-platform actions by itself.
+The next roadmap item is dependency-aware update planning.
