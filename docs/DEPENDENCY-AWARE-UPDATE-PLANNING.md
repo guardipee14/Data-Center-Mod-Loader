@@ -102,8 +102,16 @@ It does not mean:
 - Steam, Boosteroid, or another provider may be bypassed;
 - installation or replacement has been authorized.
 
-## Next v0.0.6 work
+## Platform/provider restriction gate
 
-The final roadmap item is the explicit platform/provider restriction gate.
-That work will turn the existing safety principle into testable enforcement at
-the package-operation boundary.
+The final v0.0.6 safety gate is documented in `PROVIDER-RESTRICTIONS.md`.
+
+The repository now enforces the sanctioned-only package/provider boundary in CI
+and release readiness. A successful dependency plan remains evidence only and
+cannot authorize provider bypass, subscription, download, process launch, or
+direct network retrieval.
+
+## v0.0.6 feature status
+
+All v0.0.6 feature items are implemented. Release validation and exact-artifact
+live proof remain before prerelease publication.

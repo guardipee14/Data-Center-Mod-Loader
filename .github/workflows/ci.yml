@@ -84,6 +84,10 @@ jobs:
       - name: Build persistence helper
         run: dotnet build src/DCML.Persistence.Helper/DCML.Persistence.Helper.csproj --configuration Release --no-restore
 
+      - name: Enforce provider restrictions
+        shell: pwsh
+        run: ./tools/Test-DCMLProviderRestrictions.ps1
+
       - name: Restore tests
         run: dotnet restore tests/DCML.Core.Tests/DCML.Core.Tests.csproj
 

@@ -146,6 +146,7 @@ function Get-ReleaseChangeClassification {
             '.gitignore'
             'DCML.sln'
             'tools/Test-DCMLReleaseArtifact.ps1'
+            'tools/Test-DCMLProviderRestrictions.ps1'
             'tools/Test-DCMLReleaseReadiness.ps1'
         )
     ) {
@@ -266,6 +267,26 @@ if (
     -not $artifactValidation.Success
 ) {
     throw 'Release artifact validation did not report success.'
+}
+
+$providerRestrictionValidator =
+    Join-Path `
+        $ProjectRoot `
+        'tools\Test-DCMLProviderRestrictions.ps1'
+
+Assert-File `
+    -Path $providerRestrictionValidator `
+    -Description 'Provider restriction validator'
+
+$providerRestrictionValidation =
+    & $providerRestrictionValidator `
+        -ProjectRoot $ProjectRoot
+
+if (
+    $null -eq $providerRestrictionValidation -or
+    -not $providerRestrictionValidation.Success
+) {
+    throw 'Provider/platform restriction validation did not report success.'
 }
 
 $resolvedBaseCommit =
@@ -498,6 +519,7 @@ Proof:    $proofPackageSha256
     BaseCommit = $resolvedBaseCommit
     ReleaseCommit = $resolvedReleaseCommit
     ArtifactValidated = [bool]$artifactValidation.Success
+    ProviderRestrictionsValidated = [bool]$providerRestrictionValidation.Success
     ArtifactSha256 = [string]$artifactValidation.ActualSha256
     ChangeCount = $changedPaths.Count
     ChangedPaths = $changedPaths

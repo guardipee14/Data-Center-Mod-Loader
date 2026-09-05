@@ -127,7 +127,7 @@ mixture of those approaches when the current host can load the mod.
 - [x] Safe package/update metadata model
 - [x] Update/version policy
 - [x] Dependency-aware update planning
-- [ ] Never bypass platform/provider restrictions
+- [x] Never bypass platform/provider restrictions
 
 ## Follow-on milestones
 

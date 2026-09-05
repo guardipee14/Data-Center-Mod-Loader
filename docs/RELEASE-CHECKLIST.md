@@ -39,7 +39,7 @@ dotnet test .\DCML.sln `
 The expected development baseline for this milestone is:
 
 ```text
-480 passed
+484 passed
 0 failed
 0 skipped
 ```
@@ -61,6 +61,33 @@ $release =
 - declared shared-assembly equality;
 - persistence-helper dependency isolation.
 
+## 3.5 Enforce platform/provider restrictions
+
+Run the repository-owned provider restriction gate:
+
+```powershell
+$providerPolicy =
+    .\tools\Test-DCMLProviderRestrictions.ps1
+
+$providerPolicy |
+    Format-List
+```
+
+Expected result:
+
+```text
+Success          : True
+ViolationCount   : 0
+```
+
+This gate scans the host-neutral Core and the Data Center package-source
+adapter for direct process launching, direct network retrieval, Steam/Steamworks
+API use, Workshop subscription/download operations, and remote HTTP/HTTPS
+provider endpoints.
+
+The same gate runs in CI and is invoked again by release readiness. A release
+must never use package-source/update functionality to bypass a platform or
+provider restriction.
 ## 4. Run release readiness
 
 ```powershell
@@ -108,6 +135,7 @@ LICENSE.md
 .gitignore
 DCML.sln
 tools/Test-DCMLReleaseArtifact.ps1
+tools/Test-DCMLProviderRestrictions.ps1
 tools/Test-DCMLReleaseReadiness.ps1
 ```
 
@@ -169,9 +197,10 @@ $readiness =
 Expected runtime-facing result:
 
 ```text
-Success                  : True
-ArtifactValidated        : True
-LiveProofRequired        : True
+Success                       : True
+ArtifactValidated             : True
+ProviderRestrictionsValidated : True
+LiveProofRequired             : True
 LiveProofProvided        : True
 LiveProofValidated       : True
 ```
@@ -183,9 +212,10 @@ When the changed range contains only non-runtime files, no `live-proof.json` is 
 Expected result:
 
 ```text
-Success                  : True
-ArtifactValidated        : True
-RuntimeFacingChangeCount : 0
+Success                       : True
+ArtifactValidated             : True
+ProviderRestrictionsValidated : True
+RuntimeFacingChangeCount      : 0
 LiveProofRequired        : False
 LiveProofProvided        : False
 LiveProofValidated       : False
@@ -200,6 +230,7 @@ Before publishing:
 - working tree is clean;
 - automated test baseline passes;
 - release ZIP validation passes;
+- platform/provider restriction gate passes;
 - readiness gate returns `Success : True`;
 - if `LiveProofRequired : True`, the exact release commit and package SHA-256 have passed live proof;
 - release notes state what was automated and, when applicable, what was proven live;
