@@ -9,10 +9,10 @@ namespace DCML.Core.Tests;
 public sealed class DCMLReleaseVersionTests
 {
     [Fact]
-    public void V005ReleaseVersion_IsConsistent()
+    public void V006DevelopmentVersion_IsConsistent()
     {
         const string expected =
-            "0.0.5";
+            "0.0.6";
 
         Assert.Equal(
             expected,

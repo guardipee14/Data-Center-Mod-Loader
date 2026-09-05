@@ -76,11 +76,7 @@ mixture of those approaches when the current host can load the mod.
 - [x] Live proof: 686 cables, 1,372 / 1,372 resolved endpoints, 686 bidirectional physical edges
 - [x] Published `v0.0.3` prerelease with ZIP and SHA-256
 
-## Next milestone — v0.0.4 API Surface & Multi-Module Interoperability
-
-The next milestone should turn the proven internal/runtime capabilities into a
-cleaner developer-facing platform without making those APIs mandatory for mod
-compatibility.
+### v0.0.4 — API Surface & Multi-Module Interoperability
 
 ### Loader/runtime surface
 
@@ -116,8 +112,6 @@ compatibility.
 - [x] Keep persistence helper dependency-isolation checks in the release gate
 - [x] Add a release checklist that requires live proof only when runtime-facing behavior changes
 
-## Follow-on milestones
-
 ### v0.0.5 — Diagnostics & Module Status
 
 - [x] Module diagnostics/status model
@@ -126,7 +120,7 @@ compatibility.
 - [x] Optional in-game status UI
 - [x] Exportable diagnostic report that avoids sensitive/user-specific data
 
-### v0.0.6 — Package Sources & Workshop Staging
+## Next milestone — v0.0.6 Package Sources & Workshop Staging
 
 - [ ] Package-source abstraction
 - [ ] Workshop package source/staging adapter
@@ -134,6 +128,8 @@ compatibility.
 - [ ] Update/version policy
 - [ ] Dependency-aware update planning
 - [ ] Never bypass platform/provider restrictions
+
+## Follow-on milestones
 
 ### v0.1.0 — Public API Stabilization
 
